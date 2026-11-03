@@ -1,35 +1,41 @@
-# Prepared upstream contributions
+# Upstream contributions to MyGo
 
-Nothing here is published: these are patches and issue drafts for
-[egoist/mygo](https://github.com/egoist/mygo), kept for review.
+What dsh-go ran into, and what was filed upstream on 2026-11-04.
+
+## Filed
+
+| # | Kind | What |
+|---|---|---|
+| [#1118](https://github.com/egoist/mygo/issues/1118) | issue | `mygo.json` has no `license`, so the PKGBUILD can only say `LicenseRef-custom` |
+| [#1119](https://github.com/egoist/mygo/pull/1119) | PR | `fix(cli): read the PKGBUILD license from mygo.json` — fixes #1118 |
+| [#1120](https://github.com/egoist/mygo/issues/1120) | issue | GTK 3 stays light on a dark desktop, so `prefers-color-scheme` is wrong |
+| [#1121](https://github.com/egoist/mygo/issues/1121) | issue | no public way to style GTK's own widgets (the FFI workaround) |
+| [#1122](https://github.com/egoist/mygo/issues/1122) | issue | the DMA-BUF renderer is forced off, costing 2–5× scroll FPS on Wayland + Mesa |
+
+The PR fills the template's Summary / Testing / AI disclosure sections. Its
+"A human read every line" box is left unchecked on purpose: check it once you
+have read the diff.
+
+## The patch
+
+`0001-cli-license-from-mygo-json.patch` is what #1119 carries, kept here so a
+rebase is one `git am` away:
 
 ```sh
-# apply the patch to a clone of mygo
 git clone https://github.com/egoist/mygo
-cd mygo && git am ../dsh-go/contrib/upstream/0001-cli-license-from-mygo-json.patch
-go test ./cmd/mygo -run 'TestConfigTypes|TestArchLicenseAndURL|TestPKGBUILD'
+cd mygo
+git am ../dsh-go/contrib/upstream/0001-cli-license-from-mygo-json.patch
+go test ./cmd/mygo
 ```
 
-## 0001 — read the PKGBUILD license from mygo.json
+Touches `cmd/mygo/config.go`, `cmd/mygo/pkgbuild.go`, `TestArchLicenseAndURL`,
+`docs/configuration.md`, `docs/distribution.md` and `packages/cli/index.d.ts`
+(the config types must match the Go struct: `TestConfigTypes`).
 
-`mygo.json` has no `license`, so an app without a `package.json` (native UI,
-or a Go app that is not npm-packaged) could only ship `LicenseRef-custom`.
-Found while packaging dsh-go, whose PKGBUILD said `LicenseRef-custom` next to
-a repository-wide MIT `LICENSE`.
+## Still open upstream, but not filed
 
-Touches `cmd/mygo/config.go`, `cmd/mygo/pkgbuild.go`, its test, the two
-documentation pages and `packages/cli/index.d.ts` (the config types must match
-the Go struct).
-
-## issues/ — drafts, not filed
-
-- `01-dark-mode.md` — GTK 3 ignores the settings portal's `color-scheme`, so
-  `prefers-color-scheme` stays light on a dark GNOME desktop while
-  `Theme.IsDark()` is right. Includes the workaround dsh-go ships and a
-  suggested fix in `internal/linux`.
-- `02-gtk-css.md` — MyGo has no public GTK CSS hook; apps that want a GTK 4
-  looking frame poke `libgtk-3` with purego themselves. Proposes a small
-  `Chrome.SetCSS`.
-- `03-dmabuf.md` — the DMA-BUF renderer is disabled for every app; on
-  Wayland + Mesa that is 11–19 FPS against 56 while scrolling. Includes the
-  measurements and the host detection dsh-go uses before re-enabling it.
+- Nothing: the four findings we had are filed. If any of the three issues is
+  accepted, the workaround in this repository can be dropped:
+  - #1120 → `followSystemTheme` in `main.go` becomes unnecessary;
+  - #1121 → `internal/gtk` becomes one call;
+  - #1122 → the renderer policy in `configureWebRenderer` becomes redundant.
