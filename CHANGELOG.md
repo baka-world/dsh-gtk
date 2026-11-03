@@ -2,10 +2,12 @@
 
 ## 未发布
 
-- 跟随 MyGo 的新接口：`App.SetDMABUFRenderer`（Wayland + Mesa 上自动启用
-  DMA-BUF，NVIDIA/虚拟机/容器保持关闭）与 MyGo 自己同步的设置 portal 深色
-  风格，删掉了外壳里的两段 workaround。依赖暂时指向 MyGo 的 main（`v0.7.5-0.…`），
-  等 v0.7.5 发布后改回 tag。
+- 跟随 MyGo 的新接口，删掉了外壳里的三段 workaround：
+  - `App.SetDMABUFRenderer`（Wayland + Mesa 上自动启用 DMA-BUF，NVIDIA/虚拟机/
+    容器保持关闭）取代自带的 90 行宿主机探测；
+  - MyGo 自己同步设置 portal 的深色风格，取代 `SetSource` 防重入那套；
+  - `Theme.SetGTKCSS` 取代 `internal/gtk` 里 100 行 purego FFI（该包已删除）。
+  依赖暂时指向 MyGo 的 main（`v0.7.5-0.…`），等 v0.7.5 发布后改回 tag。
 
 ## 0.1.0 — 2026-11-04
 

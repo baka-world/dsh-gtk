@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/baka-world/dsh-gtk/internal/dsh"
-	"github.com/baka-world/dsh-gtk/internal/gtk"
 	dshruntime "github.com/baka-world/dsh-gtk/internal/runtime"
 	"github.com/baka-world/dsh-gtk/internal/titlebar"
 	"github.com/baka-world/dsh-gtk/internal/warmup"
@@ -112,12 +111,13 @@ func main() {
 // updateChrome gives the window chrome the appearance MyGo resolves: the
 // title bar, its buttons and the corners are GTK's, styled in GTK's CSS (see
 // internal/titlebar). MyGo follows the desktop's dark style itself now, so
-// this only has to restyle on a change.
+// this only has to restyle on a change, and SetGTKCSS replaces the sheet
+// rather than stacking another.
 func updateChrome() {
 	if !titlebar.Enabled() {
 		return
 	}
-	if err := gtk.Style(titlebar.GtkCSS(mygo.Theme.IsDark())); err != nil {
+	if err := mygo.Theme.SetGTKCSS(titlebar.GtkCSS(mygo.Theme.IsDark())); err != nil {
 		log.Printf("dsh-gtk: window chrome: %v", err)
 	}
 }

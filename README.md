@@ -29,7 +29,6 @@ internal/dsh/discover.go    找 dsh 运行时：env → 打包目录 → PATH
 internal/dsh/server.go      启动 dsh web、解析 URL 行、日志、进程组收尾
 internal/warmup/warmup.go   页面加载时的滚动预热（低帧优化，见「性能」）
 internal/titlebar/titlebar.go 窗口 chrome 的 GTK CSS：圆角、顶栏、标题按钮
-internal/gtk/               注入 GTK CSS 的逃生口（purego 调 GTK 3，等 MyGo#1126）
 cmd/perfh/main.go           滚动手感测量 harness（开发用，不随应用打包）
 web/splash.html             启动页（mygo:// 前端，自带 bridge）
 web/error.html              启动失败的诊断页：错误、日志路径、重试/退出
@@ -183,7 +182,7 @@ IndexedDB 里的界面状态会按新 origin 重新开始。
 标题自动跟着页面标题（MyGo 把 `document.title` 同步成窗口标题），按钮是
 `gtk-decoration-layout` 决定的真 GTK 控件。剩下要补的只是 GTK 3 主题和
 GTK 4 的差异，用 GTK 自己的 CSS 做（`internal/titlebar` 的 `GtkCSS`，经
-`internal/gtk` 以 user priority 注入）：
+`mygo.Theme.SetGTKCSS` 以 GTK user priority 加载）：
 
 - `decoration { border-radius: 12px }`：窗口圆角从 GTK 3 的 8px 改成
   libadwaita 的 12px，并去掉 GTK 3 那圈 1px 描边；最大化/全屏/平铺归零，
