@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DSH Go</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fafafb;
+    --fg: #1d1d1d;
+    /* The accent of the desktop's GTK 4 theme, which the page bridge
+       publishes as --mygo-accent; Adwaita blue where there is none. */
+    --accent: var(--mygo-accent, #3584e4);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #222226; --fg: #ffffff; }
+  }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: grid;
+    place-items: center;
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", "Noto Sans", sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+  }
+  .box { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 32px; }
+  .mark {
+    width: 56px; height: 56px; border-radius: 16px;
+    background: var(--accent);
+    background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #fff));
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  .title { font-size: 19px; font-weight: 650; letter-spacing: -.01em; }
+  .bar { width: 220px; height: 3px; border-radius: 2px; background: currentColor; opacity: .12; overflow: hidden; }
+  .bar i { display: block; width: 40%; height: 100%; background: var(--accent); animation: slide 1.2s ease-in-out infinite; }
+  .muted { font-size: 13px; opacity: .6; }
+  @media (prefers-reduced-motion: reduce) {
+    .mark, .bar i { animation: none; }
+  }
+  @keyframes pulse { 50% { transform: scale(.92); opacity: .7; } }
+  @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
+</style>
+</head>
+<body>
+  <div class="box">
+    <div class="mark"></div>
+    <div class="title">Starting DeepSeek Harness…</div>
+    <div class="bar"><i></i></div>
+    <div class="muted">The agent server is booting. This takes a few seconds.</div>
+  </div>
+</body>
+</html>

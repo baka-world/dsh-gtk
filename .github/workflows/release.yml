@@ -1,0 +1,59 @@
+name: Release
+
+# A tag builds the Linux packages and attaches them to a draft release.
+#
+# The bundled runtime is platform specific: scripts/prepare-runtime.sh installs
+# Node and dsh's optional dependencies for the machine it runs on, so each
+# architecture is built on a runner of its own. There is no cross build.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+              --draft --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
+          fi
+
+  build:
+    needs: draft
+    name: linux/${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-latest }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # dsh, Node and npm for this runner's platform: ~1.1 GB and a few
+      # minutes, which is what makes the packaged app self-contained.
+      - name: Bundle the dsh runtime
+        run: make runtime
+
+      - name: Build the packages
+        run: go tool mygo build -platform "linux/${{ matrix.arch }}"
+
+      - name: Attach them to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          find dist/linux-${{ matrix.arch }} -maxdepth 1 -type f \
+            \( -name '*.deb' -o -name '*.tar.gz' -o -name 'install.sh' \) \
+            -print -exec gh release upload "$GITHUB_REF_NAME" {} --repo "$GITHUB_REPOSITORY" --clobber \;

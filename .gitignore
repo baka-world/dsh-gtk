@@ -1,0 +1,14 @@
+third_party/
+resources/runtime/
+dist/
+build/
+.mygo/
+node_modules/
+*.log
+.perfhome/
+.perfdata*/
+.gocache/
+.shots/
+.perf*
+*.deb
+*.tar.gz
