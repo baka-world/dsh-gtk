@@ -1,6 +1,7 @@
 package dsh
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
@@ -386,4 +387,26 @@ while :; do sleep 0.1; done
 		time.Sleep(20 * time.Millisecond)
 	}
 	t.Fatalf("child %d still runs after the context was canceled", pid)
+}
+
+// TestServerRedactsLaunchToken keeps the one-time token out of the log file
+// and the diagnostics tail: a log outlives the server that issued it.
+func TestServerRedactsLaunchToken(t *testing.T) {
+	var buf bytes.Buffer
+	s := &Server{log: &buf}
+	s.record("dsh web: http://127.0.0.1:3080/?token=s3cret-Token_1")
+	s.record("plain line")
+	logged := buf.String()
+	if strings.Contains(logged, "s3cret") {
+		t.Errorf("log kept the token: %q", logged)
+	}
+	if !strings.Contains(logged, "token=…") {
+		t.Errorf("log does not mark the redaction: %q", logged)
+	}
+	if !strings.Contains(logged, "plain line") {
+		t.Errorf("log dropped a line: %q", logged)
+	}
+	if tail := s.Tail(); len(tail) == 0 || strings.Contains(strings.Join(tail, "\n"), "s3cret") {
+		t.Errorf("tail kept the token: %q", tail)
+	}
 }

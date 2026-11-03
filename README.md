@@ -345,6 +345,8 @@ dsh 的消息流是懒渲染的：长会话第一次把最后一段滚进视口�
 - dsh 的输出（stdout/stderr）逐行写进日志：
   `mygo.App.Path(PathLogs)/dsh.log`（Linux 为
   `~/.config/DSH Go/logs/dsh.log`），菜单「Server → Open Logs」直接打开。
+  启动 URL 里的**一次性 token 在写日志前被打码**（`token=…`），错误页上的
+  诊断输出同样处理：日志的生命周期比服务端长，不该留下能登录的凭据。
 - Unix 上子进程放进独立进程组，退出时先对进程组发 `SIGTERM`，5 秒后
   `SIGKILL`。Windows 上 node 没有可捕获的终止信号，直接结束进程。
 - 外部链接默认交给系统浏览器；窗口内只加载 `127.0.0.1` 上的 dsh。

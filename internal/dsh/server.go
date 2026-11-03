@@ -34,6 +34,12 @@ var ErrAddrInUse = errors.New("dsh: address already in use")
 
 var ansiEscape = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
 
+// launchToken matches the one-time token dsh prints in its URL. The token
+// signs the window in, and the log outlives the server: it is redacted
+// before a line reaches the log file or the diagnostics shown on the error
+// page.
+var launchToken = regexp.MustCompile(`(token=)[A-Za-z0-9._~+/=-]+`)
+
 // Config starts a dsh web server.
 type Config struct {
 	// Launch is the runtime Discover found.
@@ -325,6 +331,7 @@ func (s *Server) scan(r io.Reader, ready chan<- string) {
 }
 
 func (s *Server) record(line string) {
+	line = launchToken.ReplaceAllString(line, "${1}…")
 	s.mu.Lock()
 	s.tail = append(s.tail, line)
 	if len(s.tail) > maxTailLines {
