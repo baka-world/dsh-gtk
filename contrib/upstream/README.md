@@ -11,8 +11,10 @@ What dsh-gtk ran into, and what was filed upstream on 2026-11-04.
 | [#1120](https://github.com/egoist/mygo/issues/1120) | issue | GTK 3 stays light on a dark desktop, so `prefers-color-scheme` is wrong |
 | [#1121](https://github.com/egoist/mygo/issues/1121) | issue | no public way to style GTK's own widgets (the FFI workaround) |
 | [#1122](https://github.com/egoist/mygo/issues/1122) | issue | the DMA-BUF renderer is forced off, costing 2–5× scroll FPS on Wayland + Mesa |
+| [#1128](https://github.com/egoist/mygo/issues/1128) | issue | the generated desktop entry has no `StartupWMClass`, so X11 cannot group the window with it |
+| [#1129](https://github.com/egoist/mygo/pull/1129) | PR | `cli: name the window class in the desktop entry` — fixes #1128 |
 
-The PR fills the template's Summary / Testing / AI disclosure sections. Its
+Both PRs fill the template's Summary / Testing / AI disclosure sections. Its
 "A human read every line" box is left unchecked on purpose: check it once you
 have read the diff.
 
