@@ -32,6 +32,9 @@ import (
 //go:embed web
 var webFiles embed.FS
 
+//go:embed resources/icon.png
+var iconPNG []byte
+
 const appName = "DSH GTK"
 
 // config is how the shell starts dsh, from the command line and the
@@ -82,12 +85,18 @@ func main() {
 		updateChrome()
 		log.Printf("dsh-gtk: appearance: %s", appearance())
 		l.openWindow()
+		l.addTray()
 		go l.start()
 	})
 
 	// Quitting stops the server: an agent must not outlive the window that
 	// shows it.
-	mygo.App.OnWillQuit(func(*mygo.QuitEvent) { l.terminate() })
+	mygo.App.OnWillQuit(func(*mygo.QuitEvent) {
+		l.mu.Lock()
+		l.quitting = true
+		l.mu.Unlock()
+		l.terminate()
+	})
 	mygo.App.OnQuit(func() { l.shutdown() })
 
 	// Keep the macOS convention of a running app with no window, and reopen
@@ -184,6 +193,8 @@ type Launcher struct {
 	ctx        context.Context
 	cancel     context.CancelFunc
 	installing bool
+	tray       *mygo.Tray
+	quitting   bool
 }
 
 func newLauncher(cfg config) *Launcher {
@@ -242,6 +253,18 @@ func (l *Launcher) openWindow() {
 	neverStarted := l.gen == 0 && !l.starting
 	l.mu.Unlock()
 
+	w.OnClose(func(e *mygo.CloseEvent) {
+		// With a tray the window hides instead of quitting: dsh and the task
+		// it runs keep going in the background, and the tray brings the
+		// window back. Quit from the tray or the menu really quits.
+		l.mu.Lock()
+		keep := l.tray != nil && !l.quitting
+		l.mu.Unlock()
+		if keep {
+			e.PreventDefault()
+			w.Hide()
+		}
+	})
 	w.OnClosed(func() {
 		l.mu.Lock()
 		if l.win == w {
@@ -432,6 +455,34 @@ func (l *Launcher) showWorkspace(srv *dsh.Server, gen int) {
 		}
 	}
 	l.showURL(origin)
+}
+
+// addTray puts the app in the notification area, where a desktop keeps a
+// running app reachable after its window is closed to it: the icon shows and
+// hides the window, and quits. A desktop without a StatusNotifier host (or a
+// system without libappindicator) has no tray, which is not an error.
+func (l *Launcher) addTray() {
+	menu := mygo.NewMenu([]*mygo.MenuItem{
+		{Label: "Show " + appName, Click: func(*mygo.MenuItem, *mygo.Window) { l.openWindow() }},
+		mygo.Separator(),
+		{Label: "Quit", Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
+	})
+	tray, err := mygo.NewTray(mygo.TrayOptions{
+		ID:      "main",
+		Icon:    iconPNG,
+		Title:   appName,
+		ToolTip: appName,
+		Menu:    menu,
+	})
+	if err != nil {
+		// Unsupported on a desktop without a tray, or a system without the
+		// appindicator library: the window and its menu are enough there.
+		log.Printf("dsh-gtk: no tray icon: %v", err)
+		return
+	}
+	l.mu.Lock()
+	l.tray = tray
+	l.mu.Unlock()
 }
 
 func (l *Launcher) showURL(u string) {

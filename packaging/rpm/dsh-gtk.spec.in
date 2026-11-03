@@ -30,7 +30,7 @@ install -d %{buildroot}/opt/%{name}
 # data inside this one.
 tar -C @APPDIR@ -cf - \
 	--exclude='*.deb' --exclude='*.rpm' --exclude='*.tar.gz' \
-	--exclude=install.sh --exclude=PKGBUILD \
+	--exclude=install.sh --exclude=PKGBUILD --exclude='*.desktop' \
 	. | tar -C %{buildroot}/opt/%{name} -xf -
 install -d %{buildroot}%{_bindir}
 ln -s ../opt/%{name}/@BINARY@ %{buildroot}%{_bindir}/%{name}

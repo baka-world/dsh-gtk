@@ -37,6 +37,7 @@ mygo.json                   MyGo 应用配置（打包用）
 scripts/prepare-runtime.sh  把 dsh + Node + npm 灌进 resources/runtime
 scripts/make-rpm.sh         把 build 的产物打成 RPM（用 rpmbuild）
 packaging/rpm/dsh-gtk.spec.in  上面那个脚本填的 spec 模板
+packaging/desktop/dsh-gtk.desktop.in  桌面入口模板（图标、StartupWMClass 等）
 third_party/deepseek-harness 拉取的 dsh 源码（tag dsh-v0.2.2-alpha.3，仅作对照/升级参考）
 .github/workflows/          CI（push/PR 跑检查）与 Release（tag 出包）
 CHANGELOG.md                版本记录
@@ -128,6 +129,23 @@ sudo dnf install ./dist/linux-amd64/dsh-gtk-*.rpm
 并在应用菜单里建一项；`sh install.sh --uninstall` 可卸载（保留设置与数据）。
 
 卸载（Debian 包）：`sudo apt remove dsh-gtk`。
+
+## 桌面集成
+
+装好之后它就是一个普通的桌面应用：
+
+- **应用菜单**：`/usr/share/applications/dsh-gtk.desktop`，`Icon=dsh-gtk`（hicolor
+  256/512），带 `StartupWMClass=dsh-gtk` 让 GNOME 把窗口和入口归到一起、任务栏
+  显示图标，`Keywords` 让概览里搜得到，`SingleMainWindow=true`。
+- **托盘**：启动后常驻通知区（StatusNotifier/AppIndicator），菜单里能显示窗口和
+  退出，关窗口之后还能从托盘叫回来。桌面没有托盘宿主、或系统没有
+  `libappindicator3` 时只是日志里记一句，不影响窗口。
+- **窗口**：GTK 自己的标题栏、图标和 WM class，Wayland 下 `app_id` 就是
+  `dsh-gtk`，和 desktop 文件同名。
+
+RPM 里的 desktop 文件由 `packaging/desktop/dsh-gtk.desktop.in` 生成；`.deb` 和
+`.tar.gz` 里目前还是 MyGo 生成的最小版本（Type/Name/Exec/Icon/Categories），
+等上游把 `StartupWMClass` 之类加进 `mygo build` 再统一。
 
 ## 发布
 

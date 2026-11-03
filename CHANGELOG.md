@@ -2,6 +2,10 @@
 
 ## 未发布
 
+- 桌面集成：常驻托盘图标（显示窗口 / 退出），RPM 的 desktop 入口补上
+  `StartupWMClass`、`Keywords`、`GenericName`、`SingleMainWindow`，安装后能像
+  普通桌面应用一样出现在应用菜单里、窗口和入口归组、任务栏显示图标。
+
 - 跟随 MyGo 的新接口，删掉了外壳里的三段 workaround：
   - `App.SetDMABUFRenderer`（Wayland + Mesa 上自动启用 DMA-BUF，NVIDIA/虚拟机/
     容器保持关闭）取代自带的 90 行宿主机探测；

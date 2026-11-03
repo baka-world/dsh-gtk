@@ -64,6 +64,16 @@ top=$root/dist/.rpmbuild
 rm -rf "$top"
 mkdir -p "$top"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS,tmp}
 
+# Our own desktop entry: MyGo's has Type, Name, Exec, Icon and Categories
+# only, and the shell groups a window with its entry by StartupWMClass.
+desktop=$top/SPECS/$name.desktop
+sed \
+	-e "s|@NAME@|$(field name)|g" \
+	-e "s|@SUMMARY@|$summary|g" \
+	-e "s|@BINARY@|$name|g" \
+	-e "s|@SLUG@|$name|g" \
+	packaging/desktop/dsh-gtk.desktop.in >"$desktop"
+
 spec=$top/SPECS/$name.spec
 sed \
 	-e "s|@NAME@|$name|g" \
@@ -73,7 +83,7 @@ sed \
 	-e "s|@DESCRIPTION@|$(field name) shows DeepSeek Harness in a native window.|g" \
 	-e "s|@APPDIR@|$root/$app_dir|g" \
 	-e "s|@BINARY@|$name|g" \
-	-e "s|@DESKTOP@|$root/$app_dir/$name.desktop|g" \
+	-e "s|@DESKTOP@|$desktop|g" \
 	-e "s|@ICON256@|$root/$app_dir/$name-256x256.png|g" \
 	-e "s|@ICON512@|$root/$app_dir/$name-512x512.png|g" \
 	-e "s|@LICENSEFILE@|$root/LICENSE|g" \

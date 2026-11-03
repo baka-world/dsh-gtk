@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=@NAME@
+GenericName=AI coding agent
+Comment=@SUMMARY@
+Exec=@BINARY@
+Icon=@SLUG@
+Terminal=false
+Categories=Development;
+Keywords=deepseek;harness;dsh;agent;ai;
+StartupWMClass=@SLUG@
+SingleMainWindow=true
+X-GNOME-UsesNotifications=true
