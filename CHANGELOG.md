@@ -1,5 +1,12 @@
 # Changelog
 
+## 未发布
+
+- 跟随 MyGo 的新接口：`App.SetDMABUFRenderer`（Wayland + Mesa 上自动启用
+  DMA-BUF，NVIDIA/虚拟机/容器保持关闭）与 MyGo 自己同步的设置 portal 深色
+  风格，删掉了外壳里的两段 workaround。依赖暂时指向 MyGo 的 main（`v0.7.5-0.…`），
+  等 v0.7.5 发布后改回 tag。
+
 ## 0.1.0 — 2026-11-04
 
 首个发布版本：把 DeepSeek Harness 的 Web UI 装进一个 Go + MyGo 的桌面外壳。

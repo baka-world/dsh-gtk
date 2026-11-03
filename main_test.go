@@ -3,33 +3,25 @@ package main
 import (
 	"strings"
 	"testing"
+
+	"github.com/egoist/mygo"
 )
 
-func TestRendererChoice(t *testing.T) {
-	tests := []struct {
-		name     string
-		override string
-		wayland  bool
-		gdkX11   bool
-		blank    bool
-		disable  bool
-		reason   string
+func TestRendererFromEnv(t *testing.T) {
+	for _, tc := range []struct {
+		value string
+		want  mygo.DMABUFRenderer
 	}{
-		{"wayland intel", "", true, false, false, false, "dma-buf (Wayland)"},
-		{"not wayland", "", false, false, false, true, "software (not Wayland)"},
-		{"x11 forced", "", true, true, false, true, "software (not Wayland)"},
-		{"nvidia", "", true, false, true, true, "software (NVIDIA, VM or container)"},
-		{"force on over x11", "1", false, true, true, false, "dma-buf (DSH_GTK_DMABUF)"},
-		{"force on spelled", " ON ", false, false, true, false, "dma-buf (DSH_GTK_DMABUF)"},
-		{"force off", "0", true, false, false, true, "software (DSH_GTK_DMABUF)"},
-		{"force off spelled", "software", true, false, false, true, "software (DSH_GTK_DMABUF)"},
-		{"unknown override is auto", "maybe", true, false, false, false, "dma-buf (Wayland)"},
-	}
-	for _, tt := range tests {
-		disable, reason := rendererChoice(tt.override, tt.wayland, tt.gdkX11, tt.blank)
-		if disable != tt.disable || reason != tt.reason {
-			t.Errorf("%s: rendererChoice(%q, %v, %v, %v) = %v, %q; want %v, %q",
-				tt.name, tt.override, tt.wayland, tt.gdkX11, tt.blank, disable, reason, tt.disable, tt.reason)
+		{"", mygo.DMABUFRendererAuto},
+		{"1", mygo.DMABUFRendererOn},
+		{" ON ", mygo.DMABUFRendererOn},
+		{"dmabuf", mygo.DMABUFRendererOn},
+		{"0", mygo.DMABUFRendererOff},
+		{"software", mygo.DMABUFRendererOff},
+		{"maybe", mygo.DMABUFRendererAuto},
+	} {
+		if got := rendererFromEnv(tc.value); got != tc.want {
+			t.Errorf("rendererFromEnv(%q) = %q; want %q", tc.value, got, tc.want)
 		}
 	}
 }

@@ -20,7 +20,6 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/baka-world/dsh-gtk/internal/dsh"
@@ -75,19 +74,13 @@ func main() {
 	mygo.Bind(l)
 	mygo.App.SetMenu(l.menu())
 
-	// GTK 3 reports a light appearance to WebKit unless
-	// gtk-application-prefer-dark-theme says otherwise, and GNOME's dark
-	// style lives in the settings portal, which GTK 3 ignores. Read it into
-	// GTK so that prefers-color-scheme — and with it dsh's "system" theme —
-	// follows the desktop. SetSource alone works before Run; the follow-up
-	// read of the appearance waits for it.
-	mygo.Theme.SetSource(mygo.ThemeSystem)
-	mygo.Theme.OnUpdated(followSystemTheme)
+	// The window chrome follows the appearance MyGo resolves, which follows
+	// the settings portal on Linux; see updateChrome.
+	mygo.Theme.OnUpdated(updateChrome)
 	mygo.App.OnSecondInstance(func([]string, string) { l.openWindow() })
 
 	mygo.App.WhenReady(func() {
-		// The appearance drives the window chrome below, so it goes first.
-		followSystemTheme()
+		updateChrome()
 		log.Printf("dsh-gtk: appearance: %s", appearance())
 		l.openWindow()
 		go l.start()
@@ -116,127 +109,46 @@ func main() {
 	}
 }
 
-// themeApplying keeps the appearance the app gives GTK from coming back as
-// a change of the desktop's.
-var themeApplying atomic.Bool
-
-// followSystemTheme gives GTK 3 the desktop's appearance, which only the
-// settings portal carries: GNOME's dark style is
-// org.gnome.desktop.interface color-scheme, which GTK 3 does not read, so a
-// GTK 3 app stays light in a dark session. WebKitGTK takes
-// prefers-color-scheme from GTK's gtk-application-prefer-dark-theme, and
-// dsh resolves its "system" theme from that media query, so without this
-// both the page-drawn title bar and the workspace stay light.
-//
-// MyGo's SetSource("system") writes exactly that GTK setting from the
-// portal; the second step covers a dark GTK theme next to a desktop without
-// a portal preference, where the theme name is all GTK has to go on.
-func followSystemTheme() {
-	if !themeApplying.CompareAndSwap(false, true) {
+// updateChrome gives the window chrome the appearance MyGo resolves: the
+// title bar, its buttons and the corners are GTK's, styled in GTK's CSS (see
+// internal/titlebar). MyGo follows the desktop's dark style itself now, so
+// this only has to restyle on a change.
+func updateChrome() {
+	if !titlebar.Enabled() {
 		return
 	}
-	mygo.Theme.SetSource(mygo.ThemeSystem)
-	if mygo.Theme.IsDark() {
-		mygo.Theme.SetSource(mygo.ThemeDark)
+	if err := gtk.Style(titlebar.GtkCSS(mygo.Theme.IsDark())); err != nil {
+		log.Printf("dsh-gtk: window chrome: %v", err)
 	}
-	if titlebar.Enabled() {
-		// The window chrome, in GTK's own CSS (internal/titlebar): the
-		// corners, the flat header bar and the title buttons, which MyGo's
-		// API stops short of. It has to be the GTK main thread.
-		if err := gtk.Style(titlebar.GtkCSS(mygo.Theme.IsDark())); err != nil {
-			log.Printf("dsh-gtk: window chrome: %v", err)
-		}
-	}
-	time.AfterFunc(300*time.Millisecond, func() { themeApplying.Store(false) })
 }
 
-// configureWebRenderer picks WebKitGTK's renderer before the toolkit starts.
+// configureWebRenderer asks MyGo for WebKitGTK's DMA-BUF renderer before the
+// toolkit starts: it draws blank windows on NVIDIA, virtual machines and
+// containers, so MyGo keeps it off unless the app asks. "auto" leaves it on
+// where the host is known to draw with it (Wayland, a Mesa GPU, no container
+// or VM), where scrolling a large conversation is 2-5x faster: measured on
+// the same 4,586-node chat, 1600x1000, a 12 s continuous scroll ran at 11-19
+// fps on the software renderer (WebProcess pinned at 99% of a core) and 56
+// fps with DMA-BUF.
 //
-// MyGo disables WebKitGTK's DMA-BUF renderer for every app, because it draws
-// blank windows on NVIDIA, virtual machines and containers. On Wayland with a
-// Mesa driver it instead composites on the GPU, and scrolling a large dsh
-// conversation is 2-5x faster: measured with the same 4,586-node chat,
-// 1600x1000, a 12 s continuous scroll ran at 11-19 fps on the software
-// renderer (WebProcess pinned at 99% of a core) and 56 fps with DMA-BUF.
-//
-// DSH_GTK_DMABUF=1 forces it on, DSH_GTK_DMABUF=0 forces it off. A
-// WEBKIT_DISABLE_DMABUF_RENDERER the caller set is always respected.
+// DSH_GTK_DMABUF=1 forces it on, 0 forces it off, and anything else, the
+// default, asks for "auto". A WEBKIT_DISABLE_DMABUF_RENDERER the caller set
+// still wins.
 func configureWebRenderer() {
-	if os.Getenv("WEBKIT_DISABLE_DMABUF_RENDERER") != "" {
-		return
-	}
-	disable, reason := rendererChoice(
-		os.Getenv("DSH_GTK_DMABUF"),
-		waylandAvailable(),
-		strings.EqualFold(os.Getenv("GDK_BACKEND"), "x11"),
-		blankRendererHost(),
-	)
-	if disable {
-		_ = os.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
-	} else {
-		_ = os.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "0")
-	}
-	log.Printf("dsh-gtk: web renderer: %s", reason)
+	renderer := rendererFromEnv(os.Getenv("DSH_GTK_DMABUF"))
+	mygo.App.SetDMABUFRenderer(renderer)
+	log.Printf("dsh-gtk: web renderer: %s (DSH_GTK_DMABUF)", renderer)
 }
 
-// rendererChoice is the policy of configureWebRenderer, without the side
-// effects.
-func rendererChoice(override string, wayland, gdkX11, blankHost bool) (disable bool, reason string) {
-	switch strings.ToLower(strings.TrimSpace(override)) {
+// rendererFromEnv is the policy of configureWebRenderer, without MyGo.
+func rendererFromEnv(value string) mygo.DMABUFRenderer {
+	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "1", "on", "true", "dma", "dmabuf":
-		return false, "dma-buf (DSH_GTK_DMABUF)"
+		return mygo.DMABUFRendererOn
 	case "0", "off", "false", "software":
-		return true, "software (DSH_GTK_DMABUF)"
+		return mygo.DMABUFRendererOff
 	}
-	if !wayland || gdkX11 {
-		return true, "software (not Wayland)"
-	}
-	if blankHost {
-		return true, "software (NVIDIA, VM or container)"
-	}
-	return false, "dma-buf (Wayland)"
-}
-
-// waylandAvailable reports whether WAYLAND_DISPLAY names a socket that
-// exists, so that a stale variable does not send an X11 window down the
-// DMA-BUF path.
-func waylandAvailable() bool {
-	name := os.Getenv("WAYLAND_DISPLAY")
-	if name == "" {
-		return false
-	}
-	if filepath.IsAbs(name) {
-		_, err := os.Stat(name)
-		return err == nil
-	}
-	dir := os.Getenv("XDG_RUNTIME_DIR")
-	if dir == "" {
-		return true
-	}
-	_, err := os.Stat(filepath.Join(dir, name))
-	return err == nil
-}
-
-// blankRendererHost reports hosts where WebKitGTK's DMA-BUF renderer draws
-// blank webviews: NVIDIA drivers, virtual machines and containers.
-func blankRendererHost() bool {
-	for _, p := range []string{"/sys/module/nvidia", "/proc/driver/nvidia/version", "/.dockerenv", "/run/.containerenv"} {
-		if _, err := os.Stat(p); err == nil {
-			return true
-		}
-	}
-	if os.Getenv("LIBGL_ALWAYS_SOFTWARE") != "" || strings.Contains(os.Getenv("GALLIUM_DRIVER"), "llvmpipe") {
-		return true
-	}
-	if b, err := os.ReadFile("/sys/class/dmi/id/product_name"); err == nil {
-		name := strings.ToLower(string(b))
-		for _, marker := range []string{"virtualbox", "vmware", "qemu", "kvm", "bochs", "parallels", "xen", "hyper-v"} {
-			if strings.Contains(name, marker) {
-				return true
-			}
-		}
-	}
-	return false
+	return mygo.DMABUFRendererAuto
 }
 
 func parseFlags() config {

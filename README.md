@@ -29,7 +29,7 @@ internal/dsh/discover.go    找 dsh 运行时：env → 打包目录 → PATH
 internal/dsh/server.go      启动 dsh web、解析 URL 行、日志、进程组收尾
 internal/warmup/warmup.go   页面加载时的滚动预热（低帧优化，见「性能」）
 internal/titlebar/titlebar.go 窗口 chrome 的 GTK CSS：圆角、顶栏、标题按钮
-internal/gtk/               注入 GTK CSS 的逃生口（purego 调 GTK 3，MyGo 没暴露）
+internal/gtk/               注入 GTK CSS 的逃生口（purego 调 GTK 3，等 MyGo#1126）
 cmd/perfh/main.go           滚动手感测量 harness（开发用，不随应用打包）
 web/splash.html             启动页（mygo:// 前端，自带 bridge）
 web/error.html              启动失败的诊断页：错误、日志路径、重试/退出
@@ -292,17 +292,15 @@ Runtime Updates…** 会联网检查当前 channel，有更新时弹窗让你 In
 | DMA-BUF | 1600×1000 | 56 | 49% | 48% |
 | DMA-BUF | 2880×1482 | 57 | 51% | 50% |
 
-MyGo 为了避开 NVIDIA、虚拟机和容器里的白屏，默认给所有 app 设
-`WEBKIT_DISABLE_DMABUF_RENDERER=1`。这个外壳在**原生 Wayland + Mesa 驱动**上
-会自动改回 DMA-BUF（`0`）：本机 Intel UHD 620 上滚动从 11–26 fps 提升到 ~56 fps，
-WebProcess 不再占满一个核。策略：
+WebKitGTK 的 DMA-BUF 渲染器在 NVIDIA、虚拟机和容器里会白屏，所以 MyGo 默认关
+掉它，由应用显式打开。外壳用 `mygo.App.SetDMABUFRenderer(mygo.DMABUFRendererAuto)`：
+在 Wayland + Mesa GPU、且不在容器/虚拟机/NVIDIA 上时保持开启，其余回落软件
+渲染；默认值就是 `auto`。
 
-- 自动：`WAYLAND_DISPLAY` 存在、没被 `GDK_BACKEND=x11` 强制到 X11，且不是
-  NVIDIA / 虚拟机 / 容器 / llvmpipe 时启用 DMA-BUF；其余保持软件渲染。
-- `DSH_GTK_DMABUF=1` 强制启用（X11 下实测会白屏，慎用），`DSH_GTK_DMABUF=0`
-  强制关闭。外部已设的 `WEBKIT_DISABLE_DMABUF_RENDERER` 优先。
-- 启动日志会打印 `dsh-gtk: web renderer: dma-buf (Wayland)` 或
-  `software (…)`，便于确认。
+- `DSH_GTK_DMABUF=1` 强制开启（X11 下实测会白屏，慎用），`0` 强制关闭；
+- 外部已设的 `WEBKIT_DISABLE_DMABUF_RENDERER` 优先，MyGo 不会覆盖它；
+- 启动日志会打印 `dsh-gtk: web renderer: auto (DSH_GTK_DMABUF)`，便于确认请
+  求的是哪个策略。
 
 ### 滚动预热
 
