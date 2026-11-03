@@ -1,4 +1,4 @@
-.PHONY: run dev build runtime dsh-src test check fmt tidy release
+.PHONY: run dev build rpm runtime dsh-src test check fmt tidy release
 
 # Run the app from source. It uses resources/runtime when it exists, and
 # otherwise the dsh on PATH.
@@ -20,6 +20,11 @@ dsh-src:
 # Package the app for this platform into dist/ (needs Go and make runtime).
 build: runtime
 	go tool mygo build
+
+# Build an RPM from the tree build wrote (needs rpmbuild: dnf install
+# rpm-build, or apt-get install rpm).
+rpm:
+	scripts/make-rpm.sh
 
 test:
 	go test ./...

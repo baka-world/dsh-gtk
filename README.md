@@ -36,6 +36,8 @@ web/error.html              启动失败的诊断页：错误、日志路径、�
 resources/icon.png          应用图标
 mygo.json                   MyGo 应用配置（打包用）
 scripts/prepare-runtime.sh  把 dsh + Node + npm 灌进 resources/runtime
+scripts/make-rpm.sh         把 build 的产物打成 RPM（用 rpmbuild）
+packaging/rpm/dsh-go.spec.in  上面那个脚本填的 spec 模板
 third_party/deepseek-harness 拉取的 dsh 源码（tag dsh-v0.2.2-alpha.3，仅作对照/升级参考）
 .github/workflows/          CI（push/PR 跑检查）与 Release（tag 出包）
 CHANGELOG.md                版本记录
@@ -79,6 +81,7 @@ go run .
 ```sh
 make runtime        # resources/runtime：dsh 0.2.2-alpha.3 + Node 24.11.0 + npm 11.6.1
 make build          # dist/<平台>-<架构>/ 下的应用（含 resources/runtime）
+make rpm            # 再加一个 .rpm（需要 rpmbuild：dnf install rpm-build）
 ```
 
 `mygo build` 的输出在 `dist/<平台>-<架构>/`，会把 `resources/` 整个复制进
@@ -94,6 +97,11 @@ make build          # dist/<平台>-<架构>/ 下的应用（含 resources/runti
   `prepare-runtime.sh` 和 `mygo build`。
 - 产物约 1.1 GB（7 万个文件）；`mygo build` 会先暂存到 `dist/.staging-*`，
   再生成安装包，第一次要几分钟。
+- `make rpm` 在这之后跑 `scripts/make-rpm.sh`：读 `mygo.json`（名字、版本）和
+  `package.json`（SPDX 许可证），把应用连同运行时装进 `/opt/dsh-go`，命令
+  链接到 `/usr/bin/dsh-go`，再装上 `.desktop`、hicolor 图标和许可证。它只
+  依赖 `rpmbuild`（Fedora `rpm-build`，Debian/Ubuntu `rpm`），产物落在同一个
+  `dist/linux-<架构>/` 目录里。
 
 ## 安装
 
@@ -109,6 +117,9 @@ tar xzf dist/linux-amd64/dsh-go-0.1.0-linux-amd64.tar.gz
 
 # Arch：用产出的 PKGBUILD
 cd dist/linux-amd64 && makepkg -si
+
+# Fedora / RHEL
+sudo dnf install ./dist/linux-amd64/dsh-go-*.rpm
 ```
 
 装完直接 `dsh-go`（或从应用菜单启动）。应用只监听 `127.0.0.1`，并在启动时
@@ -138,8 +149,8 @@ git push --follow-tags     # 推送后 Release workflow 建 draft release
 `.github/workflows/release.yml` 在 `v*` tag 上按架构分别构建（`ubuntu-latest`
 出 amd64、`ubuntu-24.04-arm` 出 arm64）：**运行时是按架构原生安装的，不能
 交叉打包**，所以每个架构都在自己的 runner 上跑 `make runtime` 再
-`go tool mygo build`，生成的 `.deb`、`.tar.gz`、`install.sh` 直接挂到 draft
-release 上，由你确认后发布。
+`go tool mygo build`，再跑 `scripts/make-rpm.sh`，生成的 `.deb`、`.rpm`、
+`.tar.gz`、`install.sh` 直接挂到 draft release 上，由你确认后发布。
 
 ## 参数
 

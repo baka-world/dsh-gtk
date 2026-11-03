@@ -50,10 +50,17 @@ jobs:
       - name: Build the packages
         run: go tool mygo build -platform "linux/${{ matrix.arch }}"
 
+      # rpmbuild, for the RPM: 'rpm' carries it on Debian and Ubuntu.
+      - name: Install rpmbuild
+        run: sudo apt-get update && sudo apt-get install -y rpm
+
+      - name: Build the RPM
+        run: scripts/make-rpm.sh
+
       - name: Attach them to the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           find dist/linux-${{ matrix.arch }} -maxdepth 1 -type f \
-            \( -name '*.deb' -o -name '*.tar.gz' -o -name 'install.sh' \) \
+            \( -name '*.deb' -o -name '*.rpm' -o -name '*.tar.gz' -o -name 'install.sh' \) \
             -print -exec gh release upload "$GITHUB_REF_NAME" {} --repo "$GITHUB_REPOSITORY" --clobber \;

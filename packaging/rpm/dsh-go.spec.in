@@ -1,0 +1,56 @@
+# Filled in by scripts/make-rpm.sh from the tree `mygo build` writes; this is
+# not a distribution package, it bundles dsh, Node and npm under /opt.
+%global debug_package %{nil}
+%global __os_install_post %{nil}
+# The payload is the whole app tree, dsh's dependencies included: gzip makes a
+# 650 MB package, xz -6 takes a quarter of an hour. xz -3 sits in between and
+# every rpm carries it (this one has no zstd).
+%define _binary_payload w3.xzdio
+
+Name:       @NAME@
+Version:    @VERSION@
+Release:    1%{?dist}
+Summary:    @SUMMARY@
+License:    @LICENSE@
+AutoReqProv: no
+Requires:   gtk3
+Requires:   webkit2gtk4.1
+
+%description
+@DESCRIPTION@
+
+It bundles its own copy of dsh, Node and npm under /opt/%{name}, so no global
+installation is needed.
+
+%install
+rm -rf %{buildroot}
+install -d %{buildroot}/opt/%{name}
+# The tree mygo build leaves also holds the packages built from it (.deb,
+# .tar.gz, install.sh, PKGBUILD); they would be 450 MB of already compressed
+# data inside this one.
+tar -C @APPDIR@ -cf - \
+	--exclude='*.deb' --exclude='*.rpm' --exclude='*.tar.gz' \
+	--exclude=install.sh --exclude=PKGBUILD \
+	. | tar -C %{buildroot}/opt/%{name} -xf -
+install -d %{buildroot}%{_bindir}
+ln -s ../opt/%{name}/@BINARY@ %{buildroot}%{_bindir}/%{name}
+install -Dm644 @DESKTOP@ %{buildroot}%{_datadir}/applications/%{name}.desktop
+install -Dm644 @ICON256@ %{buildroot}%{_datadir}/icons/hicolor/256x256/apps/%{name}.png
+install -Dm644 @ICON512@ %{buildroot}%{_datadir}/icons/hicolor/512x512/apps/%{name}.png
+install -Dm644 @LICENSEFILE@ %{buildroot}/usr/share/licenses/%{name}/LICENSE
+
+%files
+/opt/%{name}
+%{_bindir}/%{name}
+%{_datadir}/applications/%{name}.desktop
+%{_datadir}/icons/hicolor/256x256/apps/%{name}.png
+%{_datadir}/icons/hicolor/512x512/apps/%{name}.png
+/usr/share/licenses/%{name}/LICENSE
+
+%post
+update-desktop-database -q %{_datadir}/applications || :
+gtk-update-icon-cache -q -t -f %{_datadir}/icons/hicolor || :
+
+%postun
+update-desktop-database -q %{_datadir}/applications || :
+gtk-update-icon-cache -q -t -f %{_datadir}/icons/hicolor || :

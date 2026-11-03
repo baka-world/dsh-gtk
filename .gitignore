@@ -13,3 +13,4 @@ node_modules/
 *.deb
 *.tar.gz
 .upstream/mygo/
+.rpmtool/

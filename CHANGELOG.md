@@ -26,6 +26,11 @@
   自动改回直角。
 - 长会话首屏滚动预热：`internal/warmup`，`DSH_GO_WARMUP=0` 关闭。
 
+### 打包
+
+- `make build` 出 `.deb`、`.tar.gz` 和 `install.sh`；`make rpm` 再出一个 RPM
+  （应用与运行时在 `/opt/dsh-go`，命令链接到 `/usr/bin/dsh-go`）。
+
 ### 安全
 
 - 日志与错误页诊断里的启动 token 会打码；应用只监听 `127.0.0.1`。
