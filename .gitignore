@@ -12,4 +12,4 @@ node_modules/
 .perf*
 *.deb
 *.tar.gz
-.upstream/
+.upstream/mygo/
