@@ -11,11 +11,11 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/baka-world/dsh-go/internal/runtime"
+	"github.com/baka-world/dsh-gtk/internal/runtime"
 	"github.com/egoist/mygo"
 )
 
-// runRuntimeCommand handles `dsh-go runtime ...`, which runs without a
+// runRuntimeCommand handles `dsh-gtk runtime ...`, which runs without a
 // window so that the app can install and select runtimes from a terminal.
 func runRuntimeCommand(args []string) int {
 	mygo.App.SetName(appName)
@@ -47,14 +47,14 @@ func runRuntimeCommand(args []string) int {
 		runtimeUsage()
 		return 0
 	default:
-		fmt.Fprintf(os.Stderr, "dsh-go runtime: unknown command %q\n\n", cmd)
+		fmt.Fprintf(os.Stderr, "dsh-gtk runtime: unknown command %q\n\n", cmd)
 		runtimeUsage()
 		return 2
 	}
 }
 
 func runtimeUsage() {
-	fmt.Fprint(os.Stderr, `usage: dsh-go runtime <command>
+	fmt.Fprint(os.Stderr, `usage: dsh-gtk runtime <command>
 
 Runtimes are dsh trees installed outside the app, updated independently of
 it. The app uses the selected runtime, then the bundled one.
@@ -125,11 +125,11 @@ func runtimeStatus(args []string) int {
 		current, _ := currentRuntime(st)
 		state := "up to date"
 		if runtime.IsNewer(u.Version, current) {
-			state = "update available: dsh-go runtime install " + u.Version
+			state = "update available: dsh-gtk runtime install " + u.Version
 		}
 		fmt.Fprintf(w, "update:\t%s -> %s, checked %s (%s)\t\n", u.Channel, u.Version, age(u.CheckedAt), state)
 	} else {
-		fmt.Fprintf(w, "update:\tunknown\trun `dsh-go runtime check`\n")
+		fmt.Fprintf(w, "update:\tunknown\trun `dsh-gtk runtime check`\n")
 	}
 	runtimes, lerr := st.List()
 	fmt.Fprintf(w, "installed:\t%d in %s\t\n", len(runtimes), st.Dir)
@@ -176,7 +176,7 @@ func runtimeList(args []string) int {
 	}
 	w.Flush()
 	if len(runtimes) == 0 {
-		fmt.Fprintln(os.Stderr, "no installed runtimes; install one with `dsh-go runtime install latest`")
+		fmt.Fprintln(os.Stderr, "no installed runtimes; install one with `dsh-gtk runtime install latest`")
 	}
 	return 0
 }
@@ -203,7 +203,7 @@ func runtimeCheck(args []string) int {
 			return 1
 		}
 		if last == nil {
-			fmt.Fprintln(os.Stderr, "no cached check; run `dsh-go runtime check`")
+			fmt.Fprintln(os.Stderr, "no cached check; run `dsh-gtk runtime check`")
 			return 1
 		}
 		u = *last
@@ -218,7 +218,7 @@ func runtimeCheck(args []string) int {
 	fmt.Printf("current: dsh %s (%s)\n", orDash(current), label)
 	fmt.Printf("channel: %s -> %s, checked %s\n", u.Channel, u.Version, age(u.CheckedAt))
 	if newer {
-		fmt.Printf("update available: dsh %s; install with `dsh-go runtime install %s`\n", u.Version, u.Version)
+		fmt.Printf("update available: dsh %s; install with `dsh-gtk runtime install %s`\n", u.Version, u.Version)
 		if *exitCode {
 			return 10
 		}
@@ -255,7 +255,7 @@ func runtimeInstall(args []string) int {
 	}
 	fmt.Printf("installed dsh %s at %s\n", rt.DSH, rt.Dir)
 	if *noActivate {
-		fmt.Printf("not selected; select it with `dsh-go runtime use %s`\n", rt.ID)
+		fmt.Printf("not selected; select it with `dsh-gtk runtime use %s`\n", rt.ID)
 	} else {
 		fmt.Println("selected; restart the app (Server > Restart) to use it")
 	}
@@ -268,7 +268,7 @@ func runtimeUse(args []string) int {
 		return 2
 	}
 	if fs.NArg() != 1 {
-		fmt.Fprintln(os.Stderr, "usage: dsh-go runtime use <id|version>")
+		fmt.Fprintln(os.Stderr, "usage: dsh-gtk runtime use <id|version>")
 		return 2
 	}
 	id := fs.Arg(0)
@@ -335,7 +335,7 @@ func runtimeRemove(args []string) int {
 		return 2
 	}
 	if fs.NArg() != 1 {
-		fmt.Fprintln(os.Stderr, "usage: dsh-go runtime remove <id|version>")
+		fmt.Fprintln(os.Stderr, "usage: dsh-gtk runtime remove <id|version>")
 		return 2
 	}
 	id := fs.Arg(0)
@@ -378,7 +378,7 @@ func runtimePrune(args []string) int {
 
 // updateChannel is the dist-tag the app follows for update checks.
 func updateChannel() string {
-	if c := strings.TrimSpace(os.Getenv("DSH_GO_CHANNEL")); c != "" {
+	if c := strings.TrimSpace(os.Getenv("DSH_GTK_CHANNEL")); c != "" {
 		return c
 	}
 	return "latest"
@@ -416,7 +416,7 @@ func age(stamp string) string {
 }
 
 // newRuntimeStore builds the store of installed runtimes, and the node and
-// npm it installs with: DSH_GO_NODE / DSH_GO_NPM, then the bundled ones,
+// npm it installs with: DSH_GTK_NODE / DSH_GTK_NPM, then the bundled ones,
 // then node on PATH.
 func newRuntimeStore() (*runtime.Store, error) {
 	userData, err := mygo.App.Path(mygo.PathUserData)
@@ -429,7 +429,7 @@ func newRuntimeStore() (*runtime.Store, error) {
 
 func runtimeTooling() (node, npm string) {
 	resources, _ := mygo.App.Path(mygo.PathResources)
-	node = os.Getenv("DSH_GO_NODE")
+	node = os.Getenv("DSH_GTK_NODE")
 	if node == "" {
 		for _, name := range []string{"node", "node.exe"} {
 			if p := filepath.Join(resources, "runtime", name); isExecutableFile(p) {
@@ -443,7 +443,7 @@ func runtimeTooling() (node, npm string) {
 			node = p
 		}
 	}
-	npm = os.Getenv("DSH_GO_NPM")
+	npm = os.Getenv("DSH_GTK_NPM")
 	if npm == "" {
 		if p := filepath.Join(resources, "runtime", "npm", "bin", "npm-cli.js"); isFile(p) {
 			npm = p

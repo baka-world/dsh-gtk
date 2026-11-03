@@ -2,10 +2,10 @@
 # not a distribution package, it bundles dsh, Node and npm under /opt.
 %global debug_package %{nil}
 %global __os_install_post %{nil}
-# The payload is the whole app tree, dsh's dependencies included: gzip makes a
-# 650 MB package, xz -6 takes a quarter of an hour. xz -3 sits in between and
-# every rpm carries it (this one has no zstd).
-%define _binary_payload w3.xzdio
+# The payload is the whole app tree, dsh's dependencies included: xz -6 is
+# what the .deb gets too, and every rpm can write it. Packaging runs in CI, so
+# the time (a quarter of an hour for 1.1 GB) costs nothing.
+%define _binary_payload w6.xzdio
 
 Name:       @NAME@
 Version:    @VERSION@

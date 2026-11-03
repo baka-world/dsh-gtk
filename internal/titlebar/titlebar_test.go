@@ -19,9 +19,9 @@ func TestEnabled(t *testing.T) {
 		{"NO", false},
 		{" off ", false},
 	} {
-		t.Setenv("DSH_GO_TITLEBAR", tc.value)
+		t.Setenv("DSH_GTK_TITLEBAR", tc.value)
 		if got := Enabled(); got != tc.want {
-			t.Errorf("Enabled() with DSH_GO_TITLEBAR=%q = %v; want %v", tc.value, got, tc.want)
+			t.Errorf("Enabled() with DSH_GTK_TITLEBAR=%q = %v; want %v", tc.value, got, tc.want)
 		}
 	}
 }

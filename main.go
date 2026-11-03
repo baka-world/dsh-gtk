@@ -1,4 +1,4 @@
-// Command dsh-go is a MyGo desktop shell for DeepSeek Harness: it starts
+// Command dsh-gtk is a MyGo desktop shell for DeepSeek Harness: it starts
 // the dsh web server and shows the workspace in a native window.
 //
 //	go run .
@@ -23,18 +23,18 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/baka-world/dsh-go/internal/dsh"
-	"github.com/baka-world/dsh-go/internal/gtk"
-	dshruntime "github.com/baka-world/dsh-go/internal/runtime"
-	"github.com/baka-world/dsh-go/internal/titlebar"
-	"github.com/baka-world/dsh-go/internal/warmup"
+	"github.com/baka-world/dsh-gtk/internal/dsh"
+	"github.com/baka-world/dsh-gtk/internal/gtk"
+	dshruntime "github.com/baka-world/dsh-gtk/internal/runtime"
+	"github.com/baka-world/dsh-gtk/internal/titlebar"
+	"github.com/baka-world/dsh-gtk/internal/warmup"
 	"github.com/egoist/mygo"
 )
 
 //go:embed web
 var webFiles embed.FS
 
-const appName = "DSH Go"
+const appName = "DSH GTK"
 
 // config is how the shell starts dsh, from the command line and the
 // environment.
@@ -52,14 +52,14 @@ func main() {
 	}
 	configureWebRenderer()
 	if warmup.Enabled() {
-		log.Printf("dsh-go: scroll warm-up: on")
+		log.Printf("dsh-gtk: scroll warm-up: on")
 	} else {
-		log.Printf("dsh-go: scroll warm-up: off (DSH_GO_WARMUP)")
+		log.Printf("dsh-gtk: scroll warm-up: off (DSH_GTK_WARMUP)")
 	}
 	if titlebar.Enabled() {
-		log.Printf("dsh-go: title bar: drawn by the page (DSH_GO_TITLEBAR=0 keeps GTK 3's)")
+		log.Printf("dsh-gtk: title bar: drawn by the page (DSH_GTK_TITLEBAR=0 keeps GTK 3's)")
 	} else {
-		log.Printf("dsh-go: title bar: GTK 3 (DSH_GO_TITLEBAR)")
+		log.Printf("dsh-gtk: title bar: GTK 3 (DSH_GTK_TITLEBAR)")
 	}
 	cfg := parseFlags()
 
@@ -88,7 +88,7 @@ func main() {
 	mygo.App.WhenReady(func() {
 		// The appearance drives the window chrome below, so it goes first.
 		followSystemTheme()
-		log.Printf("dsh-go: appearance: %s", appearance())
+		log.Printf("dsh-gtk: appearance: %s", appearance())
 		l.openWindow()
 		go l.start()
 	})
@@ -144,7 +144,7 @@ func followSystemTheme() {
 		// corners, the flat header bar and the title buttons, which MyGo's
 		// API stops short of. It has to be the GTK main thread.
 		if err := gtk.Style(titlebar.GtkCSS(mygo.Theme.IsDark())); err != nil {
-			log.Printf("dsh-go: window chrome: %v", err)
+			log.Printf("dsh-gtk: window chrome: %v", err)
 		}
 	}
 	time.AfterFunc(300*time.Millisecond, func() { themeApplying.Store(false) })
@@ -159,14 +159,14 @@ func followSystemTheme() {
 // 1600x1000, a 12 s continuous scroll ran at 11-19 fps on the software
 // renderer (WebProcess pinned at 99% of a core) and 56 fps with DMA-BUF.
 //
-// DSH_GO_DMABUF=1 forces it on, DSH_GO_DMABUF=0 forces it off. A
+// DSH_GTK_DMABUF=1 forces it on, DSH_GTK_DMABUF=0 forces it off. A
 // WEBKIT_DISABLE_DMABUF_RENDERER the caller set is always respected.
 func configureWebRenderer() {
 	if os.Getenv("WEBKIT_DISABLE_DMABUF_RENDERER") != "" {
 		return
 	}
 	disable, reason := rendererChoice(
-		os.Getenv("DSH_GO_DMABUF"),
+		os.Getenv("DSH_GTK_DMABUF"),
 		waylandAvailable(),
 		strings.EqualFold(os.Getenv("GDK_BACKEND"), "x11"),
 		blankRendererHost(),
@@ -176,7 +176,7 @@ func configureWebRenderer() {
 	} else {
 		_ = os.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "0")
 	}
-	log.Printf("dsh-go: web renderer: %s", reason)
+	log.Printf("dsh-gtk: web renderer: %s", reason)
 }
 
 // rendererChoice is the policy of configureWebRenderer, without the side
@@ -184,9 +184,9 @@ func configureWebRenderer() {
 func rendererChoice(override string, wayland, gdkX11, blankHost bool) (disable bool, reason string) {
 	switch strings.ToLower(strings.TrimSpace(override)) {
 	case "1", "on", "true", "dma", "dmabuf":
-		return false, "dma-buf (DSH_GO_DMABUF)"
+		return false, "dma-buf (DSH_GTK_DMABUF)"
 	case "0", "off", "false", "software":
-		return true, "software (DSH_GO_DMABUF)"
+		return true, "software (DSH_GTK_DMABUF)"
 	}
 	if !wayland || gdkX11 {
 		return true, "software (not Wayland)"
@@ -241,8 +241,8 @@ func blankRendererHost() bool {
 
 func parseFlags() config {
 	var cfg config
-	flag.StringVar(&cfg.workspace, "workspace", os.Getenv("DSH_GO_WORKSPACE"), "directory dsh works in (default: your home directory)")
-	flag.StringVar(&cfg.home, "home", os.Getenv("DSH_GO_HOME"), "DSH_HOME of the server (default: dsh's own, ~/.dsh)")
+	flag.StringVar(&cfg.workspace, "workspace", os.Getenv("DSH_GTK_WORKSPACE"), "directory dsh works in (default: your home directory)")
+	flag.StringVar(&cfg.home, "home", os.Getenv("DSH_GTK_HOME"), "DSH_HOME of the server (default: dsh's own, ~/.dsh)")
 	flag.IntVar(&cfg.port, "port", 3080, "preferred port of the web server; 0 picks a free one")
 	flag.StringVar(&cfg.dsh, "dsh", "", "dsh executable or lib/bin.js (default: bundled runtime, then PATH)")
 	flag.StringVar(&cfg.node, "node", "", "node executable for a JavaScript dsh entry point")
@@ -386,7 +386,7 @@ func (l *Launcher) start() {
 	if err != nil && l.cfg.port != 0 && errors.Is(err, dsh.ErrAddrInUse) {
 		// Another dsh owns the preferred port: take a free one. The origin
 		// changes with it, and so does the web UI's stored state.
-		log.Printf("dsh-go: port %d is taken; asking for a free one", l.cfg.port)
+		log.Printf("dsh-gtk: port %d is taken; asking for a free one", l.cfg.port)
 		srv, err = l.boot(0)
 	}
 
@@ -402,7 +402,7 @@ func (l *Launcher) start() {
 	if err != nil {
 		l.lastErr = err.Error()
 		l.mu.Unlock()
-		log.Printf("dsh-go: %v", err)
+		log.Printf("dsh-gtk: %v", err)
 		l.showError()
 		return
 	}
@@ -429,7 +429,7 @@ func (l *Launcher) boot(port int) (*dsh.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("dsh-go: %s runtime: %s", launch.Source, launch.Executable)
+	log.Printf("dsh-gtk: %s runtime: %s", launch.Source, launch.Executable)
 	var w io.Writer = os.Stderr
 	if l.logFile != nil {
 		w = l.logFile
@@ -548,7 +548,7 @@ func (l *Launcher) showError() {
 			return
 		}
 		if err := w.Page().LoadURL("/error.html"); err != nil {
-			log.Printf("dsh-go: show the error page: %v", err)
+			log.Printf("dsh-gtk: show the error page: %v", err)
 		}
 		w.Show()
 		w.Focus()
@@ -559,7 +559,7 @@ func (l *Launcher) fail(err error) {
 	l.mu.Lock()
 	l.lastErr = err.Error()
 	l.mu.Unlock()
-	log.Printf("dsh-go: %v", err)
+	log.Printf("dsh-gtk: %v", err)
 	l.showError()
 }
 
@@ -649,17 +649,17 @@ func (l *Launcher) OpenDataFolder() error {
 // Quit quits the app, as the error page offers.
 func (l *Launcher) Quit() { mygo.App.Quit() }
 
-// installedRuntime reports the runtime selected with `dsh-go runtime use`,
+// installedRuntime reports the runtime selected with `dsh-gtk runtime use`,
 // for Discover. A broken selection is logged and left to the bundled tree.
 func installedRuntime() (dir, node string) {
 	st, err := newRuntimeStore()
 	if err != nil {
-		log.Printf("dsh-go: installed runtime: %v", err)
+		log.Printf("dsh-gtk: installed runtime: %v", err)
 		return "", ""
 	}
 	rt, err := st.Active()
 	if err != nil {
-		log.Printf("dsh-go: installed runtime: %v", err)
+		log.Printf("dsh-gtk: installed runtime: %v", err)
 		return "", ""
 	}
 	if rt == nil {
@@ -786,7 +786,7 @@ func (l *Launcher) installRuntime(version string) {
 		}
 		if mygo.NotificationsSupported() {
 			_ = mygo.NewNotification(mygo.NotificationOptions{
-				Title: "DSH Go",
+				Title: "DSH GTK",
 				Body:  "Installing dsh " + version + "…",
 			}).Show()
 		}
@@ -839,7 +839,7 @@ func (l *Launcher) installLogPath() string {
 }
 
 func (l *Launcher) menuError(title string, err error) {
-	log.Printf("dsh-go: %s: %v", title, err)
+	log.Printf("dsh-gtk: %s: %v", title, err)
 	if mygo.App.IsReady() {
 		_, _ = mygo.Dialog.Message(mygo.MessageOptions{
 			Type:    mygo.MessageError,
@@ -863,7 +863,7 @@ func (l *Launcher) viewItems() []*mygo.MenuItem {
 		{Label: "Open in Browser", Click: func(*mygo.MenuItem, *mygo.Window) {
 			if u := l.currentURL(); u != "" {
 				if err := mygo.Shell.OpenExternal(u); err != nil {
-					log.Printf("dsh-go: open in browser: %v", err)
+					log.Printf("dsh-gtk: open in browser: %v", err)
 				}
 			}
 		}},
@@ -925,14 +925,14 @@ func appearance() string {
 
 func userAgentSuffix() string {
 	if v := mygo.App.Version(); v != "" {
-		return "DSHGo/" + v
+		return "DSHGTK/" + v
 	}
-	return "DSHGo"
+	return "DSHGTK"
 }
 
 // preloadScript runs in every page before the page's own scripts: the
 // bottom corner rounding of internal/titlebar, and the transcript warm-up of
-// internal/warmup. DSH_GO_TITLEBAR and DSH_GO_WARMUP turn them off.
+// internal/warmup. DSH_GTK_TITLEBAR and DSH_GTK_WARMUP turn them off.
 func preloadScript() string {
 	var parts []string
 	if titlebar.Enabled() {

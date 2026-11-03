@@ -51,10 +51,10 @@ type DiscoverOptions struct {
 	// InstalledNode is a node executable inside InstalledDir, empty when
 	// the runtime uses the app's node.
 	InstalledNode string
-	// DSH overrides DSH_GO_DSH, a path to lib/bin.js or to an executable
+	// DSH overrides DSH_GTK_DSH, a path to lib/bin.js or to an executable
 	// dsh.
 	DSH string
-	// Node overrides DSH_GO_NODE, the interpreter of a JavaScript entry
+	// Node overrides DSH_GTK_NODE, the interpreter of a JavaScript entry
 	// point.
 	Node string
 	// Getenv defaults to os.Getenv.
@@ -65,12 +65,12 @@ type DiscoverOptions struct {
 
 // Discover finds the dsh runtime, in this order:
 //
-//  1. DSH_GO_DSH, a path to lib/bin.js or to an executable dsh;
-//  2. InstalledDir, a runtime installed by `dsh-go runtime install`;
+//  1. DSH_GTK_DSH, a path to lib/bin.js or to an executable dsh;
+//  2. InstalledDir, a runtime installed by `dsh-gtk runtime install`;
 //  3. the bundle under resources/runtime, written by scripts/prepare-runtime.sh;
 //  4. a dsh command on PATH.
 //
-// A JavaScript entry point runs on DSH_GO_NODE, a node inside the installed
+// A JavaScript entry point runs on DSH_GTK_NODE, a node inside the installed
 // runtime, the bundled node, or the node on PATH, in that order.
 func Discover(o DiscoverOptions) (Launch, error) {
 	if o.Getenv == nil {
@@ -93,11 +93,11 @@ func Discover(o DiscoverOptions) (Launch, error) {
 
 	nodeOverride := o.Node
 	if nodeOverride == "" {
-		nodeOverride = o.Getenv("DSH_GO_NODE")
+		nodeOverride = o.Getenv("DSH_GTK_NODE")
 	}
 	dshOverride := o.DSH
 	if dshOverride == "" {
-		dshOverride = o.Getenv("DSH_GO_DSH")
+		dshOverride = o.Getenv("DSH_GTK_DSH")
 	}
 
 	// node returns the interpreter for a JavaScript entry point: the one
@@ -152,7 +152,7 @@ func Discover(o DiscoverOptions) (Launch, error) {
 	}
 
 	return Launch{}, fmt.Errorf(
-		"no dsh runtime found: run scripts/prepare-runtime.sh to bundle one, install it with `dsh-go runtime install latest`, or set DSH_GO_DSH to a dsh executable or lib/bin.js",
+		"no dsh runtime found: run scripts/prepare-runtime.sh to bundle one, install it with `dsh-gtk runtime install latest`, or set DSH_GTK_DSH to a dsh executable or lib/bin.js",
 	)
 }
 

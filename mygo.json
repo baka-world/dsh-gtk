@@ -1,10 +1,10 @@
 {
-  "name": "DSH Go",
-  "slug": "dsh-go",
-  "identifier": "dev.baka.dshgo",
+  "name": "DSH GTK",
+  "slug": "dsh-gtk",
+  "identifier": "dev.baka.dshgtk",
   "version": "0.1.0",
-  "copyright": "© 2026 the dsh-go contributors",
-  "publisher": "dsh-go contributors",
+  "copyright": "© 2026 the dsh-gtk contributors",
+  "publisher": "dsh-gtk contributors",
   "main": ".",
   "linux": {
     "comment": "DeepSeek Harness in a native desktop window",
@@ -12,7 +12,7 @@
       "Development"
     ],
     "command": [
-      "dsh-go"
+      "dsh-gtk"
     ]
   }
 }

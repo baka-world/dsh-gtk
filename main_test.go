@@ -19,10 +19,10 @@ func TestRendererChoice(t *testing.T) {
 		{"not wayland", "", false, false, false, true, "software (not Wayland)"},
 		{"x11 forced", "", true, true, false, true, "software (not Wayland)"},
 		{"nvidia", "", true, false, true, true, "software (NVIDIA, VM or container)"},
-		{"force on over x11", "1", false, true, true, false, "dma-buf (DSH_GO_DMABUF)"},
-		{"force on spelled", " ON ", false, false, true, false, "dma-buf (DSH_GO_DMABUF)"},
-		{"force off", "0", true, false, false, true, "software (DSH_GO_DMABUF)"},
-		{"force off spelled", "software", true, false, false, true, "software (DSH_GO_DMABUF)"},
+		{"force on over x11", "1", false, true, true, false, "dma-buf (DSH_GTK_DMABUF)"},
+		{"force on spelled", " ON ", false, false, true, false, "dma-buf (DSH_GTK_DMABUF)"},
+		{"force off", "0", true, false, false, true, "software (DSH_GTK_DMABUF)"},
+		{"force off spelled", "software", true, false, false, true, "software (DSH_GTK_DMABUF)"},
 		{"unknown override is auto", "maybe", true, false, false, false, "dma-buf (Wayland)"},
 	}
 	for _, tt := range tests {
@@ -41,11 +41,11 @@ func TestPreloadScript(t *testing.T) {
 			t.Errorf("preloadScript misses %q", want)
 		}
 	}
-	t.Setenv("DSH_GO_WARMUP", "0")
+	t.Setenv("DSH_GTK_WARMUP", "0")
 	if script := preloadScript(); strings.Contains(script, "__dshGoWarmup") {
-		t.Error("preloadScript keeps the warm-up with DSH_GO_WARMUP=0")
+		t.Error("preloadScript keeps the warm-up with DSH_GTK_WARMUP=0")
 	}
-	t.Setenv("DSH_GO_TITLEBAR", "0")
+	t.Setenv("DSH_GTK_TITLEBAR", "0")
 	if got := preloadScript(); got != "" {
 		t.Errorf("preloadScript() with both off = %q", got)
 	}

@@ -1,4 +1,4 @@
-// Package warmup provides the script a DSH Go window injects into the dsh
+// Package warmup provides the script a DSH GTK window injects into the dsh
 // workspace before its own scripts.
 //
 // dsh renders the end of a long transcript lazily: the first time the last
@@ -88,10 +88,10 @@ const Script = `(function () {
 })();`
 
 // Enabled reports whether the warm-up is on. It is on by default;
-// DSH_GO_WARMUP=0 (or off/false/no) turns it off for a window whose
+// DSH_GTK_WARMUP=0 (or off/false/no) turns it off for a window whose
 // injected scroll is not wanted.
 func Enabled() bool {
-	switch strings.ToLower(strings.TrimSpace(os.Getenv("DSH_GO_WARMUP"))) {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("DSH_GTK_WARMUP"))) {
 	case "0", "off", "false", "no":
 		return false
 	}

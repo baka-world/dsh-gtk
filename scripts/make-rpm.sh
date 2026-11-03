@@ -77,7 +77,7 @@ sed \
 	-e "s|@ICON256@|$root/$app_dir/$name-256x256.png|g" \
 	-e "s|@ICON512@|$root/$app_dir/$name-512x512.png|g" \
 	-e "s|@LICENSEFILE@|$root/LICENSE|g" \
-	packaging/rpm/dsh-go.spec.in >"$spec"
+	packaging/rpm/dsh-gtk.spec.in >"$spec"
 
 # rpmbuild scripts through %{_tmppath}, /var/tmp by default: keep them in the
 # build tree, where a container may add a read-only /var/tmp. The file check

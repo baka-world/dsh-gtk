@@ -22,9 +22,9 @@ func TestEnabled(t *testing.T) {
 		{" OFF ", false},
 	}
 	for _, tt := range tests {
-		t.Setenv("DSH_GO_WARMUP", tt.value)
+		t.Setenv("DSH_GTK_WARMUP", tt.value)
 		if got := Enabled(); got != tt.want {
-			t.Errorf("Enabled() with DSH_GO_WARMUP=%q = %v, want %v", tt.value, got, tt.want)
+			t.Errorf("Enabled() with DSH_GTK_WARMUP=%q = %v, want %v", tt.value, got, tt.want)
 		}
 	}
 }

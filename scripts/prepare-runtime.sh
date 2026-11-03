@@ -5,7 +5,7 @@
 #
 # `mygo build` copies resources/ into the app, so the bundle is what makes
 # the packaged app run without a global dsh or node installation. The bundled
-# npm lets `dsh-go runtime install` update dsh without the app.
+# npm lets `dsh-gtk runtime install` update dsh without the app.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -52,7 +52,7 @@ if [ -f "$DEST/node_modules/@deepseek-ai/dsh/lib/bin.js" ] \
   echo "dsh $DSH_VERSION is already bundled in $DEST"
 else
   echo "installing @deepseek-ai/dsh@$DSH_VERSION into $DEST (this takes a few minutes)"
-  printf '{\n  "name": "dsh-go-runtime",\n  "private": true\n}\n' > "$DEST/package.json"
+  printf '{\n  "name": "dsh-gtk-runtime",\n  "private": true\n}\n' > "$DEST/package.json"
   rm -rf "$DEST/node_modules"
   npm install --prefix "$DEST" --omit=dev --no-audit --no-fund "@deepseek-ai/dsh@$DSH_VERSION"
   printf '%s\n' "$DSH_VERSION" > "$DEST/.dsh-version"

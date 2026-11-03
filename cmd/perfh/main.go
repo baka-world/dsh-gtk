@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/baka-world/dsh-go/internal/dsh"
-	"github.com/baka-world/dsh-go/internal/warmup"
+	"github.com/baka-world/dsh-gtk/internal/dsh"
+	"github.com/baka-world/dsh-gtk/internal/warmup"
 	"github.com/egoist/mygo"
 )
 
@@ -279,7 +279,7 @@ func main() {
 			";(document.head||document.documentElement).appendChild(s);})();" + pre
 	}
 
-	mygo.App.SetName("DSH Go")
+	mygo.App.SetName("DSH GTK")
 	mygo.App.WhenReady(func() {
 		cookies, err := srv.AuthCookies(10 * time.Second)
 		if err != nil {

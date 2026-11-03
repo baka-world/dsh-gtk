@@ -372,7 +372,7 @@ func (s *Store) Remove(id string) error {
 		sel = selection{}
 	}
 	if sel.Active == id {
-		return fmt.Errorf("runtime %s is active; select another first (`dsh-go runtime off` for the bundled one)", id)
+		return fmt.Errorf("runtime %s is active; select another first (`dsh-gtk runtime off` for the bundled one)", id)
 	}
 	if sel.Previous == id {
 		sel.Previous = ""

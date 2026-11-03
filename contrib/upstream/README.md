@@ -1,6 +1,6 @@
 # Upstream contributions to MyGo
 
-What dsh-go ran into, and what was filed upstream on 2026-11-04.
+What dsh-gtk ran into, and what was filed upstream on 2026-11-04.
 
 ## Filed
 
@@ -24,7 +24,7 @@ rebase is one `git am` away:
 ```sh
 git clone https://github.com/egoist/mygo
 cd mygo
-git am ../dsh-go/contrib/upstream/0001-cli-license-from-mygo-json.patch
+git am ../dsh-gtk/contrib/upstream/0001-cli-license-from-mygo-json.patch
 go test ./cmd/mygo
 ```
 

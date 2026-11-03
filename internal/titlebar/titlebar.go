@@ -21,14 +21,14 @@ import (
 	"strings"
 )
 
-// Enabled reports whether the window chrome is restyled. DSH_GO_TITLEBAR=0
+// Enabled reports whether the window chrome is restyled. DSH_GTK_TITLEBAR=0
 // leaves it to the desktop's GTK 3 theme, for a desktop whose theme already
 // matches, or for telling the two apart.
 func Enabled() bool {
 	if runtime.GOOS == "darwin" {
 		return false
 	}
-	switch strings.ToLower(strings.TrimSpace(os.Getenv("DSH_GO_TITLEBAR"))) {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("DSH_GTK_TITLEBAR"))) {
 	case "0", "off", "false", "no":
 		return false
 	}

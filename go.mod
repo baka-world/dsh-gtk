@@ -1,4 +1,4 @@
-module github.com/baka-world/dsh-go
+module github.com/baka-world/dsh-gtk
 
 go 1.27.3
 
