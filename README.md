@@ -167,6 +167,31 @@ git push --follow-tags     # 推送后 Release workflow 建 draft release
 （`license`，Arch 的 PKGBUILD 和 RPM 的 `License:` 都用它），改版本或换许可证
 只需要动这一个文件。
 
+### MyGo 依赖走 fork
+
+`go.mod` 里 `require` 的仍是 `github.com/egoist/mygo`，但用 `replace` 指到
+[baka-world/mygo](https://github.com/baka-world/mygo) 的一个提交：
+
+```
+require github.com/egoist/mygo v0.7.5-0.…
+replace github.com/egoist/mygo => github.com/baka-world/mygo v0.7.5-0.…
+```
+
+理由：外壳要用的接口和修复（`App.SetDMABUFRenderer`、`Theme.SetGTKCSS`、
+`mygo build` 会丢掉资源目录里点文件那个 bug）上游要等发版才拿得到，而桌面外壳
+等不起。fork 的 `main` 就是「上游 main + 我们的补丁」：
+
+- `.github/workflows/sync-upstream.yml` 在 fork 里每 6 小时（以及手动触发）
+  `git merge upstream/main` 并跑 `go test ./cmd/mygo`；
+- 补丁和上游改了同一处时合并会冲突，workflow 直接失败——这时候在本地解决、
+  推上去，下一次同步继续；
+- 上游把补丁合了也没关系，同样的代码合进来是一次空合并，`main` 不会因此分叉。
+
+升级依赖：fork 同步好之后，把 `go.mod` 里的版本（`require` 和 `replace` 两处）
+换成 fork `main` 的新提交（`go list -m github.com/baka-world/mygo@<sha>` 能算出
+伪版本），再 `go mod tidy`、`make check`、发版。补丁被上游吸收后，也可以改回
+直接依赖上游的 tag。
+
 `.github/workflows/release.yml` 在 `v*` tag 上按架构分别构建（`ubuntu-latest`
 出 amd64、`ubuntu-24.04-arm` 出 arm64）：**运行时是按架构原生安装的，不能
 交叉打包**，所以每个架构都在自己的 runner 上跑 `make runtime` 再

@@ -1,12 +1,22 @@
 # Changelog
 
-## 未发布
+## 0.1.3 — 2026-11-04
 
-- 修托盘/菜单里的 Quit 退不掉应用。`mygo.App.Quit()` 的顺序是「先关窗口，再
-  `OnWillQuit`」，而我们的关窗处理在有托盘时是「隐藏而不是关闭」——它把等待中的
-  退出当成用户点关闭，`PreventDefault()` 掉，于是 Quit、⌘Q、SIGTERM 全都无效，
-  应用继续待着。现在在 `OnBeforeQuit`（关窗口之前）就标记退出，关窗处理不再拦。
-  实测：修之前 `kill -TERM` 后进程还在，修之后立刻退出。
+- 修「装好的应用里的 dsh 起不来」：`mygo build` 复制 `resources/` 时跳过所有点
+  开头的名字，运行时就丢了 36 个点文件，其中
+  `@earendil-works/pi-ai/dist/providers/data/.manifest.json` 是 `llm-pi-ai` 插件
+  静态 import 的，缺了它 dsh 直接 `startup failed: 2 required plugins did not
+  activate`，窗口停在错误页。现在打包产物里 36 个点文件全在（`dist` 里核对过）。
+
+- 依赖改走 fork：[baka-world/mygo](https://github.com/baka-world/mygo) 的 `main`
+  = 上游 main + 我们的补丁，fork 里的 `.github/workflows/sync-upstream.yml` 每
+  6 小时合并一次上游并跑 `go test ./cmd/mygo`，冲突就失败等人处理。这样上面那个
+  修复和 `Theme.SetGTKCSS` 之类不用等上游发版。
+
+- 修托盘/菜单里的 Quit 退不掉应用：`mygo.App.Quit()` 是先关窗口再触发
+  `OnWillQuit`，而有托盘时我们关窗只是隐藏，于是退出被自己否决，Quit、⌘Q、
+  SIGTERM 全都无效。现在在 `OnBeforeQuit`（关窗之前）就标记退出。实测：修之前
+  `kill -TERM` 后进程还在，修之后立刻退出。
 
 ## 0.1.2 — 2026-11-04
 

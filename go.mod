@@ -2,7 +2,7 @@ module github.com/baka-world/dsh-gtk
 
 go 1.27.3
 
-require github.com/egoist/mygo v0.7.5-0.20261103195256-8871e2f469fa
+require github.com/egoist/mygo v0.7.5-0.20261104132624-738acd7f7d2a
 
 require (
 	github.com/ebitengine/purego v0.11.1 // indirect
@@ -11,3 +11,5 @@ require (
 )
 
 tool github.com/egoist/mygo/cmd/mygo
+
+replace github.com/egoist/mygo => github.com/baka-world/mygo v0.7.5-0.20261104132624-738acd7f7d2a

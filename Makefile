@@ -30,7 +30,7 @@ test:
 	go test ./...
 
 # Every Go file of the app; third_party/ is the dsh source, not ours.
-GOFILES = $$(find . -name '*.go' -not -path './third_party/*' -not -path './.gocache/*' -not -path './dist/*')
+GOFILES = $$(find . -name '*.go' -not -path './third_party/*' -not -path './.*' -not -path './dist/*')
 
 fmt:
 	gofmt -w $(GOFILES)

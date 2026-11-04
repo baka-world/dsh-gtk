@@ -23,3 +23,16 @@ predates both. The license has already moved to `mygo.json` here — `mygo build
 reads it from the working tree — so this repository only waits on a tag to drop
 the pseudo-version in `go.mod`. The desktop entry still comes from `mygo build`
 for `.deb` and `.tar.gz`; the RPM ships its own, richer one.
+
+## The fork
+
+[dsh-gtk](https://github.com/baka-world/dsh-gtk) builds against
+[baka-world/mygo](https://github.com/baka-world/mygo), a fork whose `main` is
+upstream's `main` plus the patches above (a `replace` in `go.mod` pins a
+commit). A desktop shell cannot wait for a release to fix a startup bug, and
+two of the fixes here are exactly that kind.
+
+`.github/workflows/sync-upstream.yml` in the fork merges `upstream/main` every
+six hours, runs `go test ./cmd/mygo`, and fails on a conflict so a human
+resolves it. Merges, never rebases: the shell pins commits, and once upstream
+merges a patch the same code arriving again is an empty merge.

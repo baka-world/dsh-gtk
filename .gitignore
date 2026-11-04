@@ -12,7 +12,7 @@ node_modules/
 .perf*
 *.deb
 *.tar.gz
-.upstream/mygo/
+.upstream/
 .rpmtool/
 
 # Throwaway measurement harnesses (see docs/perf-sidebar.md)
