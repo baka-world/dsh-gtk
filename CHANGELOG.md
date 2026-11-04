@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.2 — 2026-11-04
+
+修 0.1.1 的 RPM：`/usr/bin/dsh-gtk` 是 `../opt/dsh-gtk/dsh-gtk`，从 `/usr/bin` 出发
+会解析成 `/usr/opt/…`，断链。后果不止是命令跑不起来——GNOME 和 GIO 会因为这个
+`Exec` 找不到而**整条 desktop 条目都不加载**，于是应用菜单里没有图标，装完像什么
+都没发生。
+
+- 链接改成 `../../opt/dsh-gtk/dsh-gtk`。
+- 加了 `TestRPMLinkResolves`：按 `mygo.json` 的 slug 把 spec 里的 `ln -s` 目标拼成
+  绝对路径，链接指错就红。旧的 spec 会失败，修好的会通过。
+
+`.deb`、`.tar.gz` 和 `install.sh` 不受影响（那条链接由 `mygo build` 写成
+`../../opt/…`，本来就是对的）。其他发行版用 `.deb`/`.tar.gz` 的不用升级。
+
 ## 0.1.1 — 2026-11-04
 
 - 桌面集成：常驻托盘图标（显示窗口 / 退出），RPM 的 desktop 入口补上

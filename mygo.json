@@ -2,7 +2,7 @@
   "name": "DSH GTK",
   "slug": "dsh-gtk",
   "identifier": "dev.baka.dshgtk",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "copyright": "© 2026 the dsh-gtk contributors",
   "publisher": "dsh-gtk contributors",
   "license": "MIT",

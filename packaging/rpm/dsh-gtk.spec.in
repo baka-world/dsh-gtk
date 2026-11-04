@@ -33,7 +33,9 @@ tar -C @APPDIR@ -cf - \
 	--exclude=install.sh --exclude=PKGBUILD --exclude='*.desktop' \
 	. | tar -C %{buildroot}/opt/%{name} -xf -
 install -d %{buildroot}%{_bindir}
-ln -s ../opt/%{name}/@BINARY@ %{buildroot}%{_bindir}/%{name}
+# From %{_bindir} (that is, /usr/bin) up two levels, then into /opt:
+# ../opt would resolve to /usr/opt and leave a dangling link.
+ln -s ../../opt/%{name}/@BINARY@ %{buildroot}%{_bindir}/%{name}
 install -Dm644 @DESKTOP@ %{buildroot}%{_datadir}/applications/%{name}.desktop
 install -Dm644 @ICON256@ %{buildroot}%{_datadir}/icons/hicolor/256x256/apps/%{name}.png
 install -Dm644 @ICON512@ %{buildroot}%{_datadir}/icons/hicolor/512x512/apps/%{name}.png
