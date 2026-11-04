@@ -38,7 +38,7 @@ name="$(field slug)"
 version="$(field version)"
 summary="$(field comment)"
 [ -n "$summary" ] || summary="$(field name)"
-license=$(sed -n 's/^[[:space:]]*"license":[[:space:]]*"\(.*\)".*/\1/p' package.json 2>/dev/null | head -1)
+license="$(field license)"
 [ -n "$license" ] || license="LicenseRef-custom"
 
 if [ -z "$arch" ]; then

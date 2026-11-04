@@ -98,8 +98,8 @@ make rpm            # 再加一个 .rpm（需要 rpmbuild：dnf install rpm-buil
   `prepare-runtime.sh` 和 `mygo build`。
 - 产物约 1.1 GB（7 万个文件）；`mygo build` 会先暂存到 `dist/.staging-*`，
   再生成安装包，第一次要几分钟。
-- `make rpm` 在这之后跑 `scripts/make-rpm.sh`：读 `mygo.json`（名字、版本）和
-  `package.json`（SPDX 许可证），把应用连同运行时装进 `/opt/dsh-gtk`，命令
+- `make rpm` 在这之后跑 `scripts/make-rpm.sh`：读 `mygo.json`（名字、版本、
+  SPDX 许可证），把应用连同运行时装进 `/opt/dsh-gtk`，命令
   链接到 `/usr/bin/dsh-gtk`，再装上 `.desktop`、hicolor 图标和许可证。它只
   依赖 `rpmbuild`（Fedora `rpm-build`，Debian/Ubuntu `rpm`），产物落在同一个
   `dist/linux-<架构>/` 目录里。
@@ -110,11 +110,11 @@ make rpm            # 再加一个 .rpm（需要 rpmbuild：dnf install rpm-buil
 
 ```sh
 # Debian / Ubuntu
-sudo apt install ./dist/linux-amd64/dsh-gtk_0.1.0_amd64.deb
+sudo apt install ./dist/linux-amd64/dsh-gtk_0.1.1_amd64.deb
 
 # 任意发行版：解压后由 install.sh 装到 ~/.local（可在应用内更新运行时）
-tar xzf dist/linux-amd64/dsh-gtk-0.1.0-linux-amd64.tar.gz
-./install.sh dsh-gtk-0.1.0-linux-amd64.tar.gz
+tar xzf dist/linux-amd64/dsh-gtk-0.1.1-linux-amd64.tar.gz
+./install.sh dsh-gtk-0.1.1-linux-amd64.tar.gz
 
 # Arch：用产出的 PKGBUILD
 cd dist/linux-amd64 && makepkg -si
@@ -144,9 +144,11 @@ sudo dnf install ./dist/linux-amd64/dsh-gtk-*.rpm
 - **窗口**：GTK 自己的标题栏、图标和 WM class，Wayland 下 `app_id` 就是
   `dsh-gtk`，和 desktop 文件同名。
 
-RPM 里的 desktop 文件由 `packaging/desktop/dsh-gtk.desktop.in` 生成；`.deb` 和
-`.tar.gz` 里目前还是 MyGo 生成的最小版本（Type/Name/Exec/Icon/Categories），
-等上游把 `StartupWMClass` 之类加进 `mygo build` 再统一。
+RPM 里的 desktop 文件由 `packaging/desktop/dsh-gtk.desktop.in` 生成，条目比 MyGo
+生成的更全。`.deb` 和 `.tar.gz` 里目前还是 MyGo 生成的最小版本
+（Type/Name/Exec/Icon/Categories）；`StartupWMClass` 已经进了
+[mygo#1129](https://github.com/egoist/mygo/pull/1129)，等 MyGo 发版、这边换掉
+伪版本之后，四种包里的条目就一致了。
 
 ## 发布
 
@@ -161,8 +163,9 @@ make release VERSION=0.1.1 # 改 mygo.json 的版本、提交、打 tag v0.1.1
 git push --follow-tags     # 推送后 Release workflow 建 draft release
 ```
 
-打包元数据取自 `mygo.json`（名称、标识、版本、分类），SPDX 许可证取自
-`package.json`（Arch 的 PKGBUILD 用），所以两处都要在改版本/换许可证时一起看。
+打包元数据全部取自 `mygo.json`：名称、标识、版本、分类，以及 SPDX 许可证
+（`license`，Arch 的 PKGBUILD 和 RPM 的 `License:` 都用它），改版本或换许可证
+只需要动这一个文件。
 
 `.github/workflows/release.yml` 在 `v*` tag 上按架构分别构建（`ubuntu-latest`
 出 amd64、`ubuntu-24.04-arm` 出 arm64）：**运行时是按架构原生安装的，不能

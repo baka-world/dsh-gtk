@@ -1,17 +1,26 @@
 # Changelog
 
-## 未发布
+## 0.1.1 — 2026-11-04
 
 - 桌面集成：常驻托盘图标（显示窗口 / 退出），RPM 的 desktop 入口补上
   `StartupWMClass`、`Keywords`、`GenericName`、`SingleMainWindow`，安装后能像
-  普通桌面应用一样出现在应用菜单里、窗口和入口归组、任务栏显示图标。
+  普通桌面应用一样出现在应用菜单里、窗口和入口归组、任务栏显示图标。桌面没有
+  托盘宿主时只是日志里记一句，关窗即退出，和之前一样。
 
 - 跟随 MyGo 的新接口，删掉了外壳里的三段 workaround：
   - `App.SetDMABUFRenderer`（Wayland + Mesa 上自动启用 DMA-BUF，NVIDIA/虚拟机/
     容器保持关闭）取代自带的 90 行宿主机探测；
   - MyGo 自己同步设置 portal 的深色风格，取代 `SetSource` 防重入那套；
   - `Theme.SetGTKCSS` 取代 `internal/gtk` 里 100 行 purego FFI（该包已删除）。
-  依赖暂时指向 MyGo 的 main（`v0.7.5-0.…`），等 v0.7.5 发布后改回 tag。
+
+- 打包元数据收进 `mygo.json`：SPDX 许可证写成 `license` 字段，RPM 和 PKGBUILD
+  都从这里读，`package.json` 因此删掉了（上游 mygo#1119 已合并）。
+
+- 依赖固定到 MyGo 的 main（`v0.7.5-0.20261103195256-8871e2f469fa`）：上面的新
+  接口还没进 tag。v0.7.5 发布后改回 tag，再发一版。
+
+- 文档：补上侧边栏收放的帧率测量（`docs/perf-sidebar.md`），并说明为什么那不是
+  外壳能调的。
 
 ## 0.1.0 — 2026-11-04
 
