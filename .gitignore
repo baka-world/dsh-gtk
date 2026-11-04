@@ -14,3 +14,8 @@ node_modules/
 *.tar.gz
 .upstream/mygo/
 .rpmtool/
+
+# Throwaway measurement harnesses (see docs/perf-sidebar.md)
+.probe/
+.xdg/
+.ghcache/
