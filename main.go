@@ -89,6 +89,18 @@ func main() {
 		go l.start()
 	})
 
+	// A quit starts by closing the windows, and our close handler hides the
+	// window instead of closing it whenever a tray can show it again — so the
+	// flag has to be up before that, or the quit cancels itself: Quit from the
+	// tray, the menu or ⌘Q would do nothing. OnWillQuit comes after the
+	// windows close, which is too late for this and the right place for the
+	// rest.
+	mygo.App.OnBeforeQuit(func(*mygo.QuitEvent) {
+		l.mu.Lock()
+		l.quitting = true
+		l.mu.Unlock()
+	})
+
 	// Quitting stops the server: an agent must not outlive the window that
 	// shows it.
 	mygo.App.OnWillQuit(func(*mygo.QuitEvent) {

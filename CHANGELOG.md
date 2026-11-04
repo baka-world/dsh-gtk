@@ -1,5 +1,13 @@
 # Changelog
 
+## 未发布
+
+- 修托盘/菜单里的 Quit 退不掉应用。`mygo.App.Quit()` 的顺序是「先关窗口，再
+  `OnWillQuit`」，而我们的关窗处理在有托盘时是「隐藏而不是关闭」——它把等待中的
+  退出当成用户点关闭，`PreventDefault()` 掉，于是 Quit、⌘Q、SIGTERM 全都无效，
+  应用继续待着。现在在 `OnBeforeQuit`（关窗口之前）就标记退出，关窗处理不再拦。
+  实测：修之前 `kill -TERM` 后进程还在，修之后立刻退出。
+
 ## 0.1.2 — 2026-11-04
 
 修 0.1.1 的 RPM：`/usr/bin/dsh-gtk` 是 `../opt/dsh-gtk/dsh-gtk`，从 `/usr/bin` 出发
