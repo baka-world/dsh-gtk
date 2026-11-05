@@ -14,10 +14,12 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -343,11 +345,21 @@ func (l *Launcher) start() {
 	}
 	l.showSplash()
 
-	srv, err := l.boot(l.cfg.port)
-	if err != nil && l.cfg.port != 0 && errors.Is(err, dsh.ErrAddrInUse) {
-		// Another dsh owns the preferred port: take a free one. The origin
-		// changes with it, and so does the web UI's stored state.
-		log.Printf("dsh-gtk: port %d is taken; asking for a free one", l.cfg.port)
+	// Pick the port before starting: another dsh may own the preferred one for
+	// good (a `dsh web` in the background, say), and finding that out by
+	// starting costs a boot that times out, plus a random origin for the web UI
+	// — whose localStorage, and so its stored state, is per origin.
+	port := l.cfg.port
+	if port != 0 {
+		if free := freePort(port, portTries); free != port {
+			log.Printf("dsh-gtk: port %d is taken; using %d", port, free)
+			port = free
+		}
+	}
+	srv, err := l.boot(port)
+	if err != nil && port != 0 && errors.Is(err, dsh.ErrAddrInUse) {
+		// Something took it between the probe and the boot: take any port.
+		log.Printf("dsh-gtk: port %d is taken; asking for a free one", port)
 		srv, err = l.boot(0)
 	}
 
@@ -372,6 +384,25 @@ func (l *Launcher) start() {
 
 	l.showWorkspace(srv, gen)
 	go l.watch(srv, gen)
+}
+
+// portTries is how many ports from the preferred one are probed before giving
+// up and letting the server pick any.
+const portTries = 10
+
+// freePort returns the first port at or after start that can be listened on, or
+// start itself when none of them can. The listener is closed again: this asks
+// the kernel who owns the port, it does not reserve it.
+func freePort(start, tries int) int {
+	for p := start; p < start+tries; p++ {
+		l, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(p)))
+		if err != nil {
+			continue
+		}
+		_ = l.Close()
+		return p
+	}
+	return start
 }
 
 func (l *Launcher) boot(port int) (*dsh.Server, error) {
