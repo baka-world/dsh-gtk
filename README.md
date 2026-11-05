@@ -384,15 +384,19 @@ inspector，合成器又只数 present、不数页面真正产出的帧。`DSH_G
 
 ```
 fps 58  p50 16.9  p95 24.1ms
->20ms 4  max 61ms  lt 1/38ms
-dom 4312  heap 780M
+>20ms 4  max 61ms  dom 4312
+slow 1274ms@266s 61ms@12s 44ms@11s
+mut 0/s  peak 15200/s  heap 780M
 ▁▂▃▅▇▅▃▂▁▁▂▃
 ```
 
 - `fps` 是最近 1 秒的 `requestAnimationFrame` 次数，`p50`/`p95` 是同一秒里的帧
   间隔，`>20ms` 是超出一个 60 Hz 预算的帧数，`max` 是最长的一帧；
-- `lt` 是 `PerformanceObserver` 的 long task（近 5 秒的次数/总时长），能区分
-  「一帧特别长」和「主线程一直被占」；
+- `slow` 是有史以来最慢的三帧及其发生时间——一次侧边栏开合往往只有**一帧**
+  特别长（长会话上实测 1274 ms），这一行就是那次；WebKit 不支持 `longtask`
+  条目，所以这里记帧本身而不是 long task；
+- `mut` 是最近一秒 DOM 增删的节点数，`peak` 是峰值。它把「React 重渲染」和
+  「纯布局」分开：重渲染会增删成千上万个节点，纯 reflow 一个都不增；
 - `dom`/`heap` 是元素数与 JS 堆，长会话重排时这两个会一起涨；
 - 末行是最近 24 秒的 fps 历史，展开/收起一次侧边栏就能看出那一段凹下去。
 

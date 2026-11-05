@@ -38,8 +38,9 @@ func TestScriptGuards(t *testing.T) {
 		"window.top !== window",
 		"location.protocol !== 'http:'",
 		"requestAnimationFrame",
-		"PerformanceObserver",
+		"MutationObserver",
 		"window.__dshFPS = {",
+		"slow",
 	} {
 		if !strings.Contains(Script, want) {
 			t.Errorf("Script lacks %q", want)

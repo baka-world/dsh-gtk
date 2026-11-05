@@ -39,10 +39,11 @@ const Script = `(function () {
 
   var frames = [];    // {t, d} of the last second
   var history = [];   // fps per second, last 24
-  var longs = [];     // long tasks of the last 10s
-  var last = 0, worst = 0, worstAt = 0;
+  var slow = [];      // the three slowest frames, {d, t}
+  var last = 0;
   var hud = null, hidden = false, lastHistory = 0;
   var nodes = 0, nodesAt = 0;
+  var muts = 0, mutAt = 0, mutPeak = 0;
 
   function ensure() {
     if (hud && hud.isConnected) return hud;
@@ -66,20 +67,26 @@ const Script = `(function () {
     if (last) {
       var d = now - last;
       frames.push({ t: now, d: d });
-      if (d > worst) { worst = d; worstAt = now; }
+      // The three slowest frames ever: one 1.2 s frame during a sidebar
+      // toggle is the whole story, and the last second no longer holds it.
+      slow.push({ t: now, d: d });
+      slow.sort(function (a, b) { return b.d - a.d; });
+      if (slow.length > 3) slow.length = 3;
     }
     last = now;
     window.requestAnimationFrame(tick);
   }
 
+  // Node churn tells a re-render apart from a layout: a React re-render of a
+  // long transcript adds and removes thousands of nodes, a reflow adds none.
   try {
-    new PerformanceObserver(function (list) {
-      list.getEntries().forEach(function (e) {
-        longs.push({ t: performance.now(), d: e.duration });
-        if (e.duration > worst) { worst = e.duration; worstAt = performance.now(); }
-      });
-    }).observe({ entryTypes: ['longtask'] });
-  } catch (e) { /* this engine has no longtask entries */ }
+    new MutationObserver(function (records) {
+      if (hud && hud.contains(records[0].target)) return; // the overlay itself
+      for (var i = 0; i < records.length; i++) {
+        muts += records[i].addedNodes.length + records[i].removedNodes.length;
+      }
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  } catch (e) { /* no MutationObserver: the line stays at 0 */ }
 
   function quantile(values, q) {
     if (!values.length) return 0;
@@ -87,20 +94,18 @@ const Script = `(function () {
     return s[Math.min(s.length - 1, Math.floor(s.length * q))];
   }
 
-  function mb(bytes) {
-    return (bytes / (1024 * 1024)).toFixed(0) + 'M';
+  function ago(ms) {
+    var s = Math.round(ms / 1000);
+    return s < 120 ? s + 's' : Math.round(s / 60) + 'm';
   }
 
   function sample() {
     var now = performance.now();
     frames = frames.filter(function (f) { return f.t >= now - 1000; });
-    longs = longs.filter(function (l) { return l.t >= now - 10000; });
     var deltas = frames.map(function (f) { return f.d; });
     var fps = frames.length;
     var jank = deltas.filter(function (d) { return d > 20; }).length;
     var worstNow = deltas.length ? Math.max.apply(null, deltas) : 0;
-    var recent = longs.filter(function (l) { return l.t >= now - 5000; });
-    var longMs = recent.reduce(function (sum, l) { return sum + l.d; }, 0);
     if (now - lastHistory >= 1000) {
       history.push(fps);
       if (history.length > 24) history.shift();
@@ -110,27 +115,33 @@ const Script = `(function () {
       nodes = document.getElementsByTagName('*').length;
       nodesAt = now;
     }
+    var rate = 0;
+    if (now - mutAt >= 250) {
+      rate = Math.round(muts / ((now - mutAt) / 1000));
+      if (rate > mutPeak) mutPeak = rate;
+      muts = 0;
+      mutAt = now;
+    }
     var el = ensure();
     if (!el) return;
     var bars = history.map(function (v) {
       var i = Math.max(0, Math.min(7, Math.round(v / 60 * 7)));
       return '\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588'.charAt(i);
     }).join('');
+    var slowest = slow.map(function (f) { return Math.round(f.d) + 'ms@' + ago(now - f.t); }).join(' ');
     var lines = [
       'fps ' + fps + '  p50 ' + quantile(deltas, .5).toFixed(1) + '  p95 ' + quantile(deltas, .95).toFixed(1) + 'ms',
-      '>20ms ' + jank + '  max ' + worstNow.toFixed(0) + 'ms  lt ' + recent.length + '/' + Math.round(longMs) + 'ms',
-      'dom ' + nodes + (window.performance.memory ? '  heap ' + mb(window.performance.memory.usedJSHeapSize) : '')
+      '>20ms ' + jank + '  max ' + worstNow.toFixed(0) + 'ms  dom ' + nodes,
+      'slow ' + (slowest || '-'),
+      'mut ' + rate + '/s  peak ' + mutPeak + '/s' + (window.performance.memory ? '  heap ' + (window.performance.memory.usedJSHeapSize / 1048576).toFixed(0) + 'M' : '')
     ];
-    if (worst - worstNow > 40) {
-      lines.push('peak ' + worst.toFixed(0) + 'ms ' + ((now - worstAt) / 1000).toFixed(1) + 's ago');
-    }
     if (bars) lines.push(bars);
     el.textContent = lines.join('\n');
   }
 
   window.__dshFPS = {
     report: function () {
-      return { fps: frames.length, history: history.slice(), worst: worst, nodes: nodes };
+      return { fps: frames.length, history: history.slice(), slow: slow.slice(), nodes: nodes, mutPeak: mutPeak };
     },
     hide: function () { hidden = true; if (hud) hud.style.display = 'none'; },
     show: function () { hidden = false; if (hud) hud.style.display = 'block'; }
