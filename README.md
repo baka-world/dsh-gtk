@@ -163,6 +163,16 @@ make release VERSION=0.1.1 # 改 mygo.json 的版本、提交、打 tag v0.1.1
 git push --follow-tags     # 推送后 Release workflow 建 draft release
 ```
 
+Actions 不可用时（比如账户被账单锁住），Linux 的包可以在本机打：
+
+```sh
+make release-local         # mygo build + make-rpm.sh，再传到 draft release
+make release-local PUBLISH=1  # 顺便发布
+```
+
+它做的正是 Release workflow 在 Linux 上做的事，只少 arm64 那份——随包的运行时是
+平台相关的，没有交叉构建，arm64 只能等 CI。需要 `rpmbuild` 和已登录的 `gh`。
+
 打包元数据全部取自 `mygo.json`：名称、标识、版本、分类，以及 SPDX 许可证
 （`license`，Arch 的 PKGBUILD 和 RPM 的 `License:` 都用它），改版本或换许可证
 只需要动这一个文件。

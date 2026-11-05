@@ -1,4 +1,4 @@
-.PHONY: run dev build rpm runtime dsh-src test check fmt tidy release
+.PHONY: run dev build rpm runtime dsh-src test check fmt tidy release release-local
 
 # Run the app from source. It uses resources/runtime when it exists, and
 # otherwise the dsh on PATH.
@@ -45,6 +45,13 @@ check:
 
 tidy:
 	go mod tidy
+
+# Build the Linux packages here and attach them to the release of the version in
+# mygo.json, for when CI cannot run. Needs rpmbuild and gh; arm64 stays for CI.
+#   make release-local            # draft
+#   make release-local PUBLISH=1
+release-local:
+	scripts/release-local.sh $(if $(PUBLISH),--publish)
 
 # Tag a release; the tag's push builds the packages in CI.
 #   make release VERSION=0.1.1
