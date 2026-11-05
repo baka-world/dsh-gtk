@@ -36,3 +36,12 @@ two of the fixes here are exactly that kind.
 six hours, runs `go test ./cmd/mygo`, and fails on a conflict so a human
 resolves it. Merges, never rebases: the shell pins commits, and once upstream
 merges a patch the same code arriving again is an empty merge.
+
+The fork also keeps its CI to Linux. dsh-gtk ships Linux only, and upstream's
+CI covers macOS and Windows on the pull requests that matter, so `.github/`
+`workflows/ci.yml` picks its platform list from the event: a push runs the
+Linux job, and macOS, Windows and Windows ARM64 wait for `workflow_dispatch`
+(`gh workflow run ci.yml -R baka-world/mygo --ref main`). `bench.yml` no
+longer runs on a push either. On a public repository that is free anyway, but
+the metered usage it reports is what triggers GitHub's payment-method check,
+and a fork does not need to pay that attention for platforms it never ships.
