@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/baka-world/dsh-gtk/internal/dsh"
+	"github.com/baka-world/dsh-gtk/internal/fps"
 	dshruntime "github.com/baka-world/dsh-gtk/internal/runtime"
 	"github.com/baka-world/dsh-gtk/internal/titlebar"
 	"github.com/baka-world/dsh-gtk/internal/warmup"
@@ -62,6 +63,9 @@ func main() {
 	} else {
 		log.Printf("dsh-gtk: title bar: GTK 3 (DSH_GTK_TITLEBAR)")
 	}
+	if fps.Enabled() {
+		log.Printf("dsh-gtk: frame overlay: on (DSH_GTK_FPS)")
+	}
 	cfg := parseFlags()
 
 	// A second launch brings the running app forward instead of starting a
@@ -87,6 +91,7 @@ func main() {
 		l.openWindow()
 		l.addTray()
 		go l.start()
+		go l.watchRuntimeSelection()
 	})
 
 	// A quit starts by closing the windows, and our close handler hides the
@@ -207,6 +212,15 @@ type Launcher struct {
 	installing bool
 	tray       *mygo.Tray
 	quitting   bool
+
+	// runningID and runningDSH are the dsh tree the server started from;
+	// managed is false when it came from DSH_GTK_DSH or PATH, which the
+	// runtime store does not select. The watcher compares them with the
+	// selection, and promptedSelection is what it has already offered.
+	runningID         string
+	runningDSH        string
+	managed           bool
+	promptedSelection string
 }
 
 func newLauncher(cfg config) *Launcher {
@@ -365,7 +379,11 @@ func (l *Launcher) boot(port int) (*dsh.Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("find the app resources: %w", err)
 	}
-	installedDir, installedNode := installedRuntime()
+	installed := installedRuntimeInfo()
+	installedDir, installedNode := "", ""
+	if installed != nil {
+		installedDir, installedNode = installed.Dir, installed.NodePath
+	}
 	launch, err := dsh.Discover(dsh.DiscoverOptions{
 		Resources:     resources,
 		InstalledDir:  installedDir,
@@ -377,6 +395,7 @@ func (l *Launcher) boot(port int) (*dsh.Server, error) {
 		return nil, err
 	}
 	log.Printf("dsh-gtk: %s runtime: %s", launch.Source, launch.Executable)
+	l.noteRunning(resources, launch, installed)
 	var w io.Writer = os.Stderr
 	if l.logFile != nil {
 		w = l.logFile
@@ -624,23 +643,26 @@ func (l *Launcher) OpenDataFolder() error {
 // Quit quits the app, as the error page offers.
 func (l *Launcher) Quit() { mygo.App.Quit() }
 
-// installedRuntime reports the runtime selected with `dsh-gtk runtime use`,
-// for Discover. A broken selection is logged and left to the bundled tree.
-func installedRuntime() (dir, node string) {
+// installedRuntimeInfo reports the runtime selected with `dsh-gtk runtime use`,
+// or nil when the bundled tree is selected. A broken selection is logged and
+// left to the bundled tree.
+func installedRuntimeInfo() *dshruntime.Runtime {
+	rt, err := activeSelection()
+	if err != nil {
+		log.Printf("dsh-gtk: installed runtime: %v", err)
+		return nil
+	}
+	return rt
+}
+
+// activeSelection reads the selection without logging, for callers that poll
+// it and report failure their own way.
+func activeSelection() (*dshruntime.Runtime, error) {
 	st, err := newRuntimeStore()
 	if err != nil {
-		log.Printf("dsh-gtk: installed runtime: %v", err)
-		return "", ""
+		return nil, err
 	}
-	rt, err := st.Active()
-	if err != nil {
-		log.Printf("dsh-gtk: installed runtime: %v", err)
-		return "", ""
-	}
-	if rt == nil {
-		return "", ""
-	}
-	return rt.Dir, rt.NodePath
+	return st.Active()
 }
 
 // rollbackRuntime selects the previous runtime and restarts the server.
@@ -684,7 +706,9 @@ func (l *Launcher) openRuntimeFolder() {
 }
 
 // checkRuntimeUpdates asks the registry whether the channel has a newer
-// dsh than the runtime the app would use, and offers to install it.
+// dsh than the runtime the app would use, and offers to install it. With no
+// channel set the check follows the tag of that runtime, so an installed
+// prerelease keeps seeing its own next release.
 func (l *Launcher) checkRuntimeUpdates() {
 	go func() {
 		st, err := newRuntimeStore()
@@ -692,13 +716,13 @@ func (l *Launcher) checkRuntimeUpdates() {
 			l.menuError("Check Runtime Updates", err)
 			return
 		}
+		current, label := currentRuntime(st)
 		channel := updateChannel()
-		up, err := st.CheckForUpdate(context.Background(), channel)
+		up, err := st.CheckForUpdate(context.Background(), channel, current)
 		if err != nil {
 			l.menuError("Check Runtime Updates", err)
 			return
 		}
-		current, label := currentRuntime(st)
 		if !dshruntime.IsNewer(up.Version, current) {
 			_, _ = mygo.Dialog.Message(mygo.MessageOptions{
 				Type:    mygo.MessageInfo,
@@ -915,6 +939,9 @@ func preloadScript() string {
 	}
 	if warmup.Enabled() {
 		parts = append(parts, warmup.Script)
+	}
+	if fps.Enabled() {
+		parts = append(parts, fps.Script)
 	}
 	return strings.Join(parts, "\n;\n")
 }

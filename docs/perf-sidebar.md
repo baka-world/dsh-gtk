@@ -60,3 +60,14 @@ collapse 49 fps   avg 20.5 ms  max 136
 expand   52 fps   avg 19.6 ms  max 84
 layout   0.38–1.54 ms per frame
 ```
+
+## 现在怎么复测
+
+上面那套探针（`.probe/` 里的窗口 + `Page.Eval`）只是把一个 rAF 计数器塞进页面，
+而生产构建恰好没有 inspector，所以同样的数字现在由外壳自己给：
+`DSH_GTK_FPS=1 dsh-gtk` 会在页面右上角画 HUD（fps、p50/p95 帧耗时、超出 20 ms
+的帧、long task、DOM 节点数、24 秒历史），量的就是这份文档里的 rAF 间隔。
+
+它落在 `PreloadScript` 里（`internal/fps`），只在 http(s) 顶层页面注入，不设
+`DSH_GTK_FPS` 就完全不跑。做侧边栏这种对比时，把 HUD 的历史条对着操作看：
+展开/收起的那一两秒会直接凹下去，凹到多少就是掉到多少帧。

@@ -45,7 +45,7 @@ func TestCompareVersions(t *testing.T) {
 
 func TestCheckForUpdateCaches(t *testing.T) {
 	s := newFakeStore(t)
-	u, err := s.CheckForUpdate(context.Background(), "alpha")
+	u, err := s.CheckForUpdate(context.Background(), "alpha", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,20 +58,58 @@ func TestCheckForUpdateCaches(t *testing.T) {
 	}
 }
 
-func TestCheckForUpdateDefaultChannel(t *testing.T) {
-	s := newFakeStore(t)
-	u, err := s.CheckForUpdate(context.Background(), "")
-	if err != nil {
-		t.Fatal(err)
+func TestCheckForUpdateFollowsRuntime(t *testing.T) {
+	tests := []struct {
+		current, channel, version string
+	}{
+		{"1.2.3", "latest", "1.2.3"},
+		{"2.0.0-alpha.1", "alpha", "2.0.0-alpha.1"},
+		{"9.9.9", "alpha", "2.0.0-alpha.1"}, // unknown tree: follow the newest tag
+		{"", "alpha", "2.0.0-alpha.1"},
 	}
-	if u.Channel != "latest" || u.Version != "1.2.3" {
-		t.Fatalf("Update = %+v", u)
+	for _, tt := range tests {
+		s := newFakeStore(t)
+		u, err := s.CheckForUpdate(context.Background(), "", tt.current)
+		if err != nil {
+			t.Fatalf("current %q: %v", tt.current, err)
+		}
+		if u.Channel != tt.channel || u.Version != tt.version {
+			t.Errorf("current %q: Update = %+v; want %s %s", tt.current, u, tt.channel, tt.version)
+		}
+	}
+}
+
+func TestPickChannel(t *testing.T) {
+	dsh := map[string]string{"latest": "0.2.1-rc.5", "alpha": "0.2.2-alpha.3", "next": "0.2.2-rc.1"}
+	tests := []struct {
+		current, want string
+	}{
+		{"0.2.2-rc.1", "next"},
+		{"0.2.2-alpha.3", "alpha"},
+		{"0.2.1-rc.5", "latest"},
+		{"0.2.3", "next"}, // nothing names it: follow the newest
+		{"", "next"},
+	}
+	for _, tt := range tests {
+		got, err := PickChannel(dsh, tt.current)
+		if err != nil {
+			t.Fatalf("current %q: %v", tt.current, err)
+		}
+		if got != tt.want {
+			t.Errorf("PickChannel(%q) = %q; want %q", tt.current, got, tt.want)
+		}
+	}
+	if got, err := PickChannel(dsh, "1.0.0"); err != nil || got != "next" {
+		t.Errorf("a release older than every tag: %q, %v", got, err)
+	}
+	if _, err := PickChannel(nil, "1.0.0"); err == nil {
+		t.Error("PickChannel accepted an empty tag set")
 	}
 }
 
 func TestCheckForUpdateMissingChannel(t *testing.T) {
 	s := newFakeStore(t)
-	_, err := s.CheckForUpdate(context.Background(), "beta")
+	_, err := s.CheckForUpdate(context.Background(), "beta", "")
 	if err == nil || !strings.Contains(err.Error(), "alpha, latest") {
 		t.Fatalf("err = %v; want the available tags", err)
 	}
@@ -83,7 +121,7 @@ func TestCheckForUpdateMissingChannel(t *testing.T) {
 func TestCheckForUpdateFailure(t *testing.T) {
 	s := newFakeStore(t)
 	t.Setenv("FAKE_FAIL", "registry offline")
-	_, err := s.CheckForUpdate(context.Background(), "latest")
+	_, err := s.CheckForUpdate(context.Background(), "latest", "")
 	if err == nil || !strings.Contains(err.Error(), "registry offline") {
 		t.Fatalf("err = %v; want npm's message", err)
 	}
@@ -91,7 +129,7 @@ func TestCheckForUpdateFailure(t *testing.T) {
 
 func TestCheckForUpdateNeedsTooling(t *testing.T) {
 	s := &Store{}
-	if _, err := s.CheckForUpdate(context.Background(), "latest"); err == nil {
+	if _, err := s.CheckForUpdate(context.Background(), "latest", ""); err == nil {
 		t.Fatal("a store without node or npm checked for updates")
 	}
 }

@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.4 — 2026-11-05
+
+- 换运行时后不用再猜为什么没生效。`dsh-gtk runtime install` 只写选择文件，dsh 是
+  应用的子进程，不重启就一直跑旧的——装完点 Later 之后就再没人提醒。现在外壳每
+  2 秒对一次选择与正在跑的树，不一致就弹一次 **Runtime Changed**（Restart /
+  Later）；选回正在跑的那个之后不提示，再换又会提示。`DSH_GTK_DSH` 或 PATH 里的
+  dsh 不受选择影响，不参与这个提醒。
+
+- 更新检测不再固定跟 `latest`：它比随包的 `0.2.2-alpha.3` 还旧（`0.2.1-rc.5`），
+  于是「Check Runtime Updates」永远回答 up to date。现在默认跟**当前运行时自己
+  所在的 channel**——先找版本号相同的 tag，找不到就跟版本号最大的那个；dsh 的
+  预发布挂在 `next`/`alpha` 上，这样 `0.2.2-rc.1` 才看得见。`DSH_GTK_CHANNEL`
+  仍可强制指定，`runtime install` 不带参数时装的也是这个 channel 的版本，而不是
+  更旧的 `latest`。
+
+- 新增 `DSH_GTK_FPS=1`：页面右上角的帧率 HUD（fps、p50/p95 帧耗时、超预算帧数、
+  long task、DOM 节点数、24 秒历史）。生产构建没有 WebKit inspector，帧率从进程
+  外量不到，这个是在页面里用 `requestAnimationFrame` 量的；`Alt+Shift+F` 隐藏。
+  也就是上面那轮侧边栏测量的工具化版本，见 README「帧率 HUD」。
+
 ## 0.1.3 — 2026-11-04
 
 - 修「装好的应用里的 dsh 起不来」：`mygo build` 复制 `resources/` 时跳过所有点

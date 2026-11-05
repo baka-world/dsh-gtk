@@ -210,6 +210,7 @@ replace github.com/egoist/mygo => github.com/baka-world/mygo v0.7.5-0.…
 | | `DSH_GTK_DMABUF` | `auto` | `1`/`on` 强制 WebKit DMABUF 渲染器，`0`/`off` 强制软件渲染；见「性能」 |
 | | `DSH_GTK_NPM` | 打包的 npm | `runtime install` 用的 npm CLI（`npm-cli.js`） |
 | | `DSH_GTK_WARMUP` | 开 | `0`/`off` 关闭页面加载时的滚动预热；见「性能」 |
+| | `DSH_GTK_FPS` | 关 | `1`/`on` 在页面右上角叠加帧率/帧耗时 HUD；见「性能」 |
 | | `DSH_GTK_TITLEBAR` | 开 | `0`/`off` 不注入窗口 chrome 的 GTK CSS，用 GTK 3 原样；见「标题栏」 |
 
 首选端口被占用时（例如另一个 `dsh web` 正跑在 3080），外壳会在启动前先挑
@@ -308,12 +309,18 @@ Runtime Updates…** 会联网检查当前 channel，有更新时弹窗让你 In
 后台进行（通知 + 日志），完成后提示重启服务。
 
 - 更新检测：`runtime check` 用内置 npm 的 `npm view @deepseek-ai/dsh dist-tags`
-  （沿用你的 registry、代理与认证配置），比较当前运行时（已选或随包）与
-  `DSH_GTK_CHANNEL`（默认 `latest`，也可 `next`/`alpha`）的版本，结果缓存到
+  （沿用你的 registry、代理与认证配置），比较当前运行时（已选或随包）与它
+  **自己所在的 channel** 的版本，结果缓存到
   `~/.config/DSH GTK/runtime-update.json`；`status` 只读缓存，不联网。版本比较
   是完整 semver（含 prerelease），所以 `0.2.2-alpha.3` 不会被 `latest` 的
-  `0.2.1-rc.5` 误判为可更新。
+  `0.2.1-rc.5` 误判为可更新。dsh 把预发布挂在 `next`/`alpha` 上，`latest` 往往
+  落后一大截，所以默认不是固定的 `latest`：先找和当前版本号相同的 tag，找不到
+  就跟版本号最大的那个（规则见 `runtime.PickChannel`），`DSH_GTK_CHANNEL` 可以
+  强制指定。
 - 没有后台自动轮询；检查由菜单、`runtime check` 或你自己的定时任务触发。
+- 选择变了而服务还在跑旧的（比如在终端里 `runtime install`，或者装完点了
+  Later），两秒内会弹一次「Runtime Changed」让你 Restart；选回正在跑的那个之后
+  不再提示，再换又会提示。
 - 布局：`~/.config/DSH GTK/runtimes/dsh-<版本>/`，选择写在
   `~/.config/DSH GTK/runtime.json`（`active` / `previous`）。安装先写临时目录、
   验证 `<node> …/lib/bin.js --version` 与 `engines.node`，再原子重命名；npm
@@ -347,6 +354,29 @@ WebKitGTK 的 DMA-BUF 渲染器在 NVIDIA、虚拟机和容器里会白屏，所
 - 外部已设的 `WEBKIT_DISABLE_DMABUF_RENDERER` 优先，MyGo 不会覆盖它；
 - 启动日志会打印 `dsh-gtk: web renderer: auto (DSH_GTK_DMABUF)`，便于确认请
   求的是哪个策略。
+
+### 帧率 HUD
+
+侧边栏这类动画到底掉到多少帧，外壳从进程外面量不到：生产构建没有 WebKit
+inspector，合成器又只数 present、不数页面真正产出的帧。`DSH_GTK_FPS=1` 改成在
+页面里量——`PreloadScript` 注入一段脚本，右上角叠一个 HUD：
+
+```
+fps 58  p50 16.9  p95 24.1ms
+>20ms 4  max 61ms  lt 1/38ms
+dom 4312  heap 780M
+▁▂▃▅▇▅▃▂▁▁▂▃
+```
+
+- `fps` 是最近 1 秒的 `requestAnimationFrame` 次数，`p50`/`p95` 是同一秒里的帧
+  间隔，`>20ms` 是超出一个 60 Hz 预算的帧数，`max` 是最长的一帧；
+- `lt` 是 `PerformanceObserver` 的 long task（近 5 秒的次数/总时长），能区分
+  「一帧特别长」和「主线程一直被占」；
+- `dom`/`heap` 是元素数与 JS 堆，长会话重排时这两个会一起涨；
+- 末行是最近 24 秒的 fps 历史，展开/收起一次侧边栏就能看出那一段凹下去。
+
+`Alt+Shift+F` 隐藏/显示，`window.__dshFPS.report()` 取当前数值。只在 http(s)
+页面、顶层框架里跑，`DSH_GTK_FPS` 不设就不注入，零成本。
 
 ### 滚动预热
 

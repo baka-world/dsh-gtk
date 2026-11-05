@@ -65,9 +65,10 @@ commands:
   check [--channel X] [--cached] [--exit-code]
                             ask npm for the channel's version and say whether
                             it is newer than the runtime the app would use
+                            (default: the channel that runtime came from)
   install [--no-activate] [--timeout 15m] [spec]
-                            install @deepseek-ai/dsh@spec (default: latest)
-                            with npm and select it
+                            install @deepseek-ai/dsh@spec with npm and select
+                            it (default: the channel's latest)
   use <id|version>          select an installed runtime
   rollback                  select the previous runtime again
   off                       use the bundled runtime
@@ -183,7 +184,7 @@ func runtimeList(args []string) int {
 
 func runtimeCheck(args []string) int {
 	fs := flag.NewFlagSet("check", flag.ContinueOnError)
-	channel := fs.String("channel", updateChannel(), "dist-tag to check, such as latest or alpha")
+	channel := fs.String("channel", updateChannel(), "dist-tag to check; empty follows the runtime you run")
 	cached := fs.Bool("cached", false, "use the last check without asking the registry")
 	exitCode := fs.Bool("exit-code", false, "exit with 10 when a newer runtime is available")
 	if err := fs.Parse(args); err != nil {
@@ -209,7 +210,7 @@ func runtimeCheck(args []string) int {
 		u = *last
 	} else {
 		var err error
-		if u, err = st.CheckForUpdate(context.Background(), *channel); err != nil {
+		if u, err = st.CheckForUpdate(context.Background(), *channel, current); err != nil {
 			fmt.Fprintln(os.Stderr, "check:", err)
 			return 1
 		}
@@ -236,9 +237,6 @@ func runtimeInstall(args []string) int {
 		return 2
 	}
 	spec := "latest"
-	if fs.NArg() > 0 {
-		spec = fs.Arg(0)
-	}
 	st, err := newRuntimeStore()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "runtime:", err)
@@ -247,6 +245,18 @@ func runtimeInstall(args []string) int {
 	st.Log = os.Stderr
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
+	if fs.NArg() > 0 {
+		spec = fs.Arg(0)
+	} else {
+		// No spec: install what the channel of the running tree names, the
+		// version `runtime check` would offer. "latest" trails dsh's own
+		// prereleases, so following it blindly would install an older tree
+		// than the one the app ships.
+		current, _ := currentRuntime(st)
+		if up, err := st.CheckForUpdate(ctx, updateChannel(), current); err == nil {
+			spec = up.Version
+		}
+	}
 	fmt.Fprintf(os.Stderr, "installing @deepseek-ai/dsh@%s with %s\n", spec, st.NPM)
 	rt, err := st.Install(ctx, spec, !*noActivate)
 	if err != nil {
@@ -376,12 +386,13 @@ func runtimePrune(args []string) int {
 	return 0
 }
 
-// updateChannel is the dist-tag the app follows for update checks.
+// updateChannel is the dist-tag the app follows for update checks. Empty means
+// "the channel of the tree we run" (see runtime.PickChannel), which is what
+// dsh's own prereleases need: "latest" trails "alpha" and "next", so a fixed
+// default would call an up-to-date prerelease old, or hide the next one.
+// DSH_GTK_CHANNEL pins a tag instead.
 func updateChannel() string {
-	if c := strings.TrimSpace(os.Getenv("DSH_GTK_CHANNEL")); c != "" {
-		return c
-	}
-	return "latest"
+	return strings.TrimSpace(os.Getenv("DSH_GTK_CHANNEL"))
 }
 
 // currentRuntime is the version the app would run now, and where it comes
