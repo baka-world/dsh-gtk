@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -408,5 +409,98 @@ func TestServerRedactsLaunchToken(t *testing.T) {
 	}
 	if tail := s.Tail(); len(tail) == 0 || strings.Contains(strings.Join(tail, "\n"), "s3cret") {
 		t.Errorf("tail kept the token: %q", tail)
+	}
+}
+
+// TestServerPassesTheListeningSocket pins the wiring that keeps the web UI's
+// origin stable: the shell's socket reaches the child as fd 3, and node is told
+// to preload the script that adopts it.
+func TestServerPassesTheListeningSocket(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a POSIX shell script and /proc")
+	}
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	f, err := ln.(*net.TCPListener).File()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	_ = ln.Close()
+
+	dir := t.TempDir()
+	node := filepath.Join(dir, "node") // named node: the preload is for node only
+	script := `#!/bin/sh
+if [ -e /proc/self/fd/3 ]; then echo "fd3=open" >&2; else echo "fd3=closed" >&2; fi
+echo "fd=$DSH_GTK_LISTEN_FD port=$DSH_GTK_LISTEN_PORT args=$*" >&2
+echo 'dsh web: http://127.0.0.1:4567/?token=abc'
+sleep 1
+`
+	if err := os.WriteFile(node, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	var log bytes.Buffer
+	srv, err := Start(Config{
+		Launch:       Launch{Executable: node, Args: []string{"bin.js"}},
+		Workspace:    dir,
+		Port:         port,
+		Listen:       f,
+		ListenShim:   filepath.Join(dir, "listenfd.js"),
+		Log:          &log,
+		ReadyTimeout: 10 * time.Second,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Stop(time.Second)
+
+	out := log.String()
+	for _, want := range []string{
+		"fd3=open",
+		"fd=3",
+		"port=" + strconv.Itoa(port),
+		"--require " + filepath.Join(dir, "listenfd.js"),
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("child saw %q, not %q", out, want)
+		}
+	}
+}
+
+// TestServerBindsItselfWithoutASocket keeps the old path: no Listen means dsh
+// binds the port and the preload is not added.
+func TestServerBindsItselfWithoutASocket(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a POSIX shell script")
+	}
+	dir := t.TempDir()
+	node := filepath.Join(dir, "node")
+	script := `#!/bin/sh
+echo "args=$* fd=${DSH_GTK_LISTEN_FD:-none}" >&2
+echo 'dsh web: http://127.0.0.1:4567/?token=abc'
+sleep 1
+`
+	if err := os.WriteFile(node, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	var log bytes.Buffer
+	srv, err := Start(Config{
+		Launch:       Launch{Executable: node, Args: []string{"bin.js"}},
+		Workspace:    dir,
+		Port:         3080,
+		Log:          &log,
+		ReadyTimeout: 10 * time.Second,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Stop(time.Second)
+	out := log.String()
+	if strings.Contains(out, "--require") || strings.Contains(out, "fd=3") {
+		t.Errorf("child got the preload without a socket: %q", out)
 	}
 }

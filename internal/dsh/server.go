@@ -51,6 +51,15 @@ type Config struct {
 	Home string
 	// Port is the listening port; 0 asks the OS for a free one.
 	Port int
+	// Listen is a socket the shell already bound on Port, passed to dsh as an
+	// inherited fd. dsh then adopts it instead of binding, which removes the
+	// race between picking a port and dsh binding it — and keeps the port
+	// stable, so the web UI's per-origin localStorage survives a restart.
+	// nil means dsh binds Port itself.
+	Listen *os.File
+	// ListenShim is the preload script that teaches dsh to adopt Listen; see
+	// listenfd.js. Ignored when Listen is nil.
+	ListenShim string
 	// Log receives every line dsh writes, with a timestamp. nil discards.
 	Log io.Writer
 	// ReadyTimeout bounds the wait for the URL line (2 minutes).
@@ -113,9 +122,21 @@ func Start(cfg Config) (*Server, error) {
 	}
 	prog, argv := cfg.Launch.Command(args...)
 
+	env := childEnv(cfg)
+	var extra []*os.File
+	if cfg.Listen != nil && isNode(prog) {
+		// `node --require listenfd.js bin.js web …`: the preload runs before
+		// dsh's own code, so the webserver plugin adopts the socket.
+		argv = append([]string{"--require", cfg.ListenShim}, argv...)
+		extra = append(extra, cfg.Listen)
+		env = setEnv(env, "DSH_GTK_LISTEN_FD", "3")
+		env = setEnv(env, "DSH_GTK_LISTEN_PORT", strconv.Itoa(cfg.Port))
+	}
+
 	cmd := exec.Command(prog, argv...)
 	cmd.Dir = cfg.Workspace
-	cmd.Env = childEnv(cfg)
+	cmd.Env = env
+	cmd.ExtraFiles = extra
 	configureProcess(cmd)
 
 	outR, outW := io.Pipe()

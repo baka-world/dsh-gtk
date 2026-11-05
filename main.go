@@ -345,22 +345,37 @@ func (l *Launcher) start() {
 	}
 	l.showSplash()
 
-	// Pick the port before starting: another dsh may own the preferred one for
-	// good (a `dsh web` in the background, say), and finding that out by
-	// starting costs a boot that times out, plus a random origin for the web UI
-	// — whose localStorage, and so its stored state, is per origin.
+	// The shell binds the port and hands the socket to dsh (see
+	// internal/dsh/listenfd.js): dsh cannot fail to bind it, there is no window
+	// between picking a port and dsh using it, and the port stays the same on
+	// every start — the web UI's localStorage, its sidebar and selected session
+	// included, is keyed by origin, and the origin contains the port.
 	port := l.cfg.port
+	var listen *os.File
 	if port != 0 {
-		if free := freePort(port, portTries); free != port {
-			log.Printf("dsh-gtk: port %d is taken; using %d", port, free)
-			port = free
+		ln, bound := bindPort(port, portTries)
+		if ln == nil {
+			log.Printf("dsh-gtk: ports %d-%d are taken; asking the OS for one", port, port+portTries-1)
+			port = 0
+		} else {
+			port = bound
+			if f, err := ln.(*net.TCPListener).File(); err == nil {
+				listen = f
+			} else {
+				log.Printf("dsh-gtk: listening socket: %v", err)
+			}
+			_ = ln.Close()
 		}
 	}
-	srv, err := l.boot(port)
+	srv, err := l.boot(port, listen)
+	if listen != nil {
+		_ = listen.Close() // the child holds its own copy
+	}
 	if err != nil && port != 0 && errors.Is(err, dsh.ErrAddrInUse) {
-		// Something took it between the probe and the boot: take any port.
+		// dsh bound the port itself instead of adopting the socket, so it was
+		// still ours: start it again on a port the OS picks.
 		log.Printf("dsh-gtk: port %d is taken; asking for a free one", port)
-		srv, err = l.boot(0)
+		srv, err = l.boot(0, nil)
 	}
 
 	l.mu.Lock()
@@ -390,22 +405,21 @@ func (l *Launcher) start() {
 // up and letting the server pick any.
 const portTries = 10
 
-// freePort returns the first port at or after start that can be listened on, or
-// start itself when none of them can. The listener is closed again: this asks
-// the kernel who owns the port, it does not reserve it.
-func freePort(start, tries int) int {
+// bindPort takes the first port from start upward that can be listened on and
+// returns its listener, or nil when none of them can. The caller keeps the
+// socket and hands it to dsh.
+func bindPort(start, tries int) (net.Listener, int) {
 	for p := start; p < start+tries; p++ {
-		l, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(p)))
+		ln, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(p)))
 		if err != nil {
 			continue
 		}
-		_ = l.Close()
-		return p
+		return ln, p
 	}
-	return start
+	return nil, 0
 }
 
-func (l *Launcher) boot(port int) (*dsh.Server, error) {
+func (l *Launcher) boot(port int, listen *os.File) (*dsh.Server, error) {
 	resources, err := mygo.App.Path(mygo.PathResources)
 	if err != nil {
 		return nil, fmt.Errorf("find the app resources: %w", err)
@@ -431,11 +445,27 @@ func (l *Launcher) boot(port int) (*dsh.Server, error) {
 	if l.logFile != nil {
 		w = l.logFile
 	}
+	shim := ""
+	if listen != nil {
+		if dir, err := mygo.App.Path(mygo.PathUserData); err == nil {
+			if p, err := dsh.WriteShim(dir); err == nil {
+				shim = p
+			} else {
+				log.Printf("dsh-gtk: listen shim: %v", err)
+			}
+		}
+	}
+	if shim == "" {
+		// Without the preload dsh would try to bind the socket we hold and fail.
+		listen = nil
+	}
 	return dsh.Start(dsh.Config{
 		Launch:       launch,
 		Workspace:    l.cfg.workspace,
 		Home:         l.cfg.home,
 		Port:         port,
+		Listen:       listen,
+		ListenShim:   shim,
 		Log:          w,
 		ReadyTimeout: 3 * time.Minute,
 		Ctx:          l.ctx,
