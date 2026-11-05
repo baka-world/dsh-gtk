@@ -223,9 +223,19 @@ replace github.com/egoist/mygo => github.com/baka-world/mygo v0.7.5-0.…
 | | `DSH_GTK_FPS` | 关 | `1`/`on` 在页面右上角叠加帧率/帧耗时 HUD；见「性能」 |
 | | `DSH_GTK_TITLEBAR` | 开 | `0`/`off` 不注入窗口 chrome 的 GTK CSS，用 GTK 3 原样；见「标题栏」 |
 
-首选端口被占用时（例如另一个 `dsh web` 正跑在 3080），外壳会在启动前先挑
-两个备用端口，按顺序试。注意 Web UI 的 origin 会随端口变化，`localStorage` /
-IndexedDB 里的界面状态会按新 origin 重新开始。
+端口不是「猜」出来的：外壳自己 `bind` 首选端口（被占用就往上找第一个空的），
+把监听套接字作为 fd 3 传给 dsh，再用 `--require` 预载
+`internal/dsh/listenfd.js`，让 webserver 插件直接 adopt 这个 fd，而不是自己
+bind。这样 dsh 不可能 bind 失败，也没有「挑完端口到 dsh 用之间被别人抢」的窗口。
+
+端口必须稳定：Web UI 的 `localStorage`（`dsh.workspace.view.v5` 里的侧边栏宽度、
+`dsh.sessions.current` 里选中的会话）是按 origin 存的，而 origin 包含端口——端口
+一变就等于换了个新用户。WebKitGTK 的落盘位置能直接看出来：
+`~/.local/share/dsh-gtk/localstorage/http_127.0.0.1_<端口>.localstorage`。
+
+预载脚本用 argv 传（`node --require …`）而不是 `NODE_OPTIONS`：用户数据目录名里
+带空格（`DSH GTK`），argv 不需要转义。dsh 不是 node 起的（`--dsh` 指向独立的
+可执行文件）时，这条路自动跳过，回到 dsh 自己 bind。
 
 ## 标题栏
 
@@ -289,8 +299,9 @@ App 的菜单（File / Edit / View / Server / Window）在 `AutoHideMenuBar` 下
 收起，按 Alt 或 F10 叫出来；菜单项和快捷键一直有效，Server → Restart 之类不
 受标题栏影响。
 
-首选端口被占用时仍会改用随机端口重试，此时 Web UI 的 origin 会变，
-`localStorage` 里的界面状态按新 origin 重新开始。
+首选端口以及它上面九个端口都被占用时，才退回「让系统挑一个」，此时 Web UI 的
+origin 会变，`localStorage` 里的界面状态按新 origin 重新开始——这是最后一道
+兜底，正常情况走不到。
 
 ## 独立更新运行时
 
