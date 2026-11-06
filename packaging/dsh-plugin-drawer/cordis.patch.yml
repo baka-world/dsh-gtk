@@ -1,0 +1,5 @@
+# Mounts the drawer plugin into the client graph; the package's dsh.client
+# declaration makes dsh serve it as a browser plugin.
+- insert:
+    - id: dsh-gtk-drawer
+      name: 'dsh-gtk-drawer'

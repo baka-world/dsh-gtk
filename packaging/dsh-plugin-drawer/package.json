@@ -1,0 +1,15 @@
+{
+  "name": "dsh-gtk-drawer",
+  "version": "0.1.0",
+  "description": "The sidebar as an overlay drawer: opening and closing it animates a transform instead of the grid track, so the transcript is not reflowed on every frame",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": { "default": "./lib/index.js" },
+    "./client": { "default": "./lib/client.js" }
+  },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": { "inject": [], "platform": "web" }
+  }
+}
