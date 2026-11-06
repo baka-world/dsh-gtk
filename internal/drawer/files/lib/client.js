@@ -15,13 +15,14 @@ window.__ModuleLoader__.load({
 
     const FRAME = 'data-dsh-gtk-drawer-frame'
     const SIDEBAR = 'data-dsh-gtk-drawer-sidebar'
+    const RIGHTBAR = 'data-dsh-gtk-drawer-rightbar'
     const HANDLE = 'data-dsh-gtk-drawer-handle'
 
     const CSS = `
-/* The frame keeps no track for the sidebar: the centre column does not change
-   width when the sidebar opens or closes. */
+/* Neither side panel gets a track: the centre column keeps one width whether
+   they are open or closed. The tracks are rewritten in place (see applyTracks)
+   rather than replaced, so dsh's own values for the middle column survive. */
 [${FRAME}] {
-  grid-template-columns: 0px minmax(0px, 1fr) minmax(0px, 0px) !important;
   transition: none !important;
 }
 
@@ -44,6 +45,25 @@ window.__ModuleLoader__.load({
 
 [${FRAME}]:not([data-sidebar-collapsed]) > [${SIDEBAR}] {
   transform: none;
+}
+
+/* The right panel is a drawer too, sliding in from the right edge. */
+[${RIGHTBAR}] {
+  /* !important: dsh writes the panel's width inline, and an inline position
+     would otherwise win over this rule. */
+  position: fixed !important;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  z-index: 40;
+  transform: translateX(100%) !important;
+  transition: transform 180ms var(--ds-ease-in-out, ease);
+  will-change: transform;
+  box-shadow: var(--dsh-gtk-drawer-shadow, 0 0 24px rgb(0 0 0 / 0.18));
+}
+
+[${FRAME}]:not([data-rightbar-collapsed]) > [${RIGHTBAR}] {
+  transform: none !important;
 }
 
 /* With the drawer closed the sidebar is off screen, and the toggle lives inside
@@ -120,6 +140,38 @@ window.__ModuleLoader__.load({
       return null
     }
 
+    /** Split a grid-template-columns value on the spaces outside minmax()/calc(). */
+    function splitTracks(value) {
+      const out = []
+      let depth = 0
+      let current = ''
+      for (const ch of value) {
+        if (ch === '(') depth++
+        if (ch === ')') depth--
+        if (depth === 0 && (ch === ' ' || ch === '\t')) {
+          if (current !== '') out.push(current)
+          current = ''
+          continue
+        }
+        current += ch
+      }
+      if (current !== '') out.push(current)
+      return out
+    }
+
+    /** Neither panel takes a track: rewrite the frame's own value so the middle
+     *  column keeps whatever dsh put there. */
+    function applyTracks(frame) {
+      const raw = frame.style.getPropertyValue('grid-template-columns')
+      if (!raw) return
+      const tracks = splitTracks(raw)
+      if (tracks.length < 3) return
+      const next = '0px ' + tracks[1] + ' 0px'
+      if (tracks[0] !== '0px' || tracks[2] !== '0px') {
+        frame.style.setProperty('grid-template-columns', next)
+      }
+    }
+
     /** dsh writes the sidebar's width as the frame's first grid track; keep the
      *  drawer on it, so a width the reader dragged survives the drawer. */
     function followWidth(frame, sidebar) {
@@ -148,16 +200,25 @@ window.__ModuleLoader__.load({
 
       found.frame.setAttribute(FRAME, '')
       found.sidebar.setAttribute(SIDEBAR, '')
+      // The right panel sits beside the centre column: the centre is the one
+      // holding the conversation, and the panel is the next grid item after it.
+      const center = Array.from(found.frame.children).find(
+        (child) => child !== found.sidebar && child.querySelector('[data-conversation-content]') !== null,
+      )
+      const rightbar = center ? center.nextElementSibling : null
+      if (rightbar && rightbar !== found.sidebar) rightbar.setAttribute(RIGHTBAR, '')
       followWidth(found.frame, found.sidebar)
+      applyTracks(found.frame)
       ensureHandle(found.frame)
       // The reader can drag the sidebar's edge: dsh rewrites the frame's first
       // track, and the drawer follows it.
       if (found.frame.__widthWatch !== true) {
         found.frame.__widthWatch = true
-        new MutationObserver(() => followWidth(found.frame, found.sidebar)).observe(found.frame, {
-          attributes: true,
-          attributeFilter: ['style'],
-        })
+        new MutationObserver(() => {
+          // Read the width before rewriting the track, or the rewrite hides it.
+          followWidth(found.frame, found.sidebar)
+          applyTracks(found.frame)
+        }).observe(found.frame, { attributes: true, attributeFilter: ['style'] })
       }
       return true
     }
