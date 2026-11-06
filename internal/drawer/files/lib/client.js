@@ -32,10 +32,13 @@ window.__ModuleLoader__.load({
   top: 0;
   bottom: 0;
   left: 0;
-  width: var(--dsh-gtk-drawer-width, 280px);
+  /* !important: collapsed, dsh shrinks the sidebar to an icon rail, and
+     translateX(-100%) would then move it out by the rail's width only. */
+  width: var(--dsh-gtk-drawer-width, 280px) !important;
   z-index: 40;
   transform: translateX(-100%);
   transition: transform 180ms var(--ds-ease-in-out, ease);
+  will-change: transform;
   box-shadow: var(--dsh-gtk-drawer-shadow, 0 0 24px rgb(0 0 0 / 0.18));
 }
 
@@ -67,14 +70,24 @@ window.__ModuleLoader__.load({
   background: var(--dsw-alias-bg-hover, #f0f0f0);
 }
 
+[${HANDLE}] {
+  opacity: 0;
+  transition: opacity 140ms var(--ds-ease-in-out, ease);
+}
+
+[${HANDLE}][data-open] {
+  opacity: 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
   [${SIDEBAR}] { transition: none; }
 }
 `
 
+    // The icon dsh's own toggle shows when the sidebar is collapsed.
     const HANDLE_ICON =
-      '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" ' +
-      'stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4h11M2.5 8h11M2.5 12h11"/></svg>'
+      '<svg width="16" height="16" aria-hidden="true">' +
+      '<use href="#dsw-icon-panel-left-outline-regular"></use></svg>'
 
     const TOGGLE = /侧边栏|sidebar/i
 
@@ -110,6 +123,10 @@ window.__ModuleLoader__.load({
     /** dsh writes the sidebar's width as the frame's first grid track; keep the
      *  drawer on it, so a width the reader dragged survives the drawer. */
     function followWidth(frame, sidebar) {
+      // Collapsed, dsh writes the icon rail's width into the first track: that
+      // is not the drawer's width, and taking it would slide the drawer out by
+      // 56px instead of its own width.
+      if (frame.hasAttribute('data-sidebar-collapsed')) return
       const match = /grid-template-columns:\s*([\d.]+)px/.exec(frame.style.cssText || '')
       if (match === null) return
       const width = Number(match[1])
@@ -160,7 +177,10 @@ window.__ModuleLoader__.load({
         document.body.appendChild(handle)
       }
       const sync = () => {
-        handle.style.display = frame.hasAttribute('data-sidebar-collapsed') ? 'flex' : 'none'
+        const open = frame.hasAttribute('data-sidebar-collapsed')
+        handle.style.display = 'flex'
+        if (open) handle.setAttribute('data-open', '')
+        else handle.removeAttribute('data-open')
       }
       if (handle.__sync !== sync) {
         handle.__sync = sync
