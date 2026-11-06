@@ -2,10 +2,11 @@
 # not a distribution package, it bundles dsh, Node and npm under /opt.
 %global debug_package %{nil}
 %global __os_install_post %{nil}
-# The payload is the whole app tree, dsh's dependencies included: xz -6 is
-# what the .deb gets too, and every rpm can write it. Packaging runs in CI, so
-# the time (a quarter of an hour for 1.1 GB) costs nothing.
-%define _binary_payload w6.xzdio
+# The payload is the whole app tree, dsh's dependencies included. Measured on
+# that 1.1 GB: xz -6 took six minutes of single-threaded compression, zstd -19
+# with every core takes one, for a package about 15% larger. A local build runs
+# on every release, so the minute wins over the size.
+%define _binary_payload w19.zstdio
 
 Name:       @NAME@
 Version:    @VERSION@
