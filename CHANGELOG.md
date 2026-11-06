@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.9 — 2026-11-06
+
+- 新增 `DSH_GTK_FPS_LOG=1`（配合 `DSH_GTK_FPS`）：外壳每秒用 `Page.Eval` 读一次
+  页面里的 `window.__dshFPS.report()`，把数字写进自己的日志：
+
+  ```
+  dsh-gtk: fps fps=60 nodes=15666 mutPeak=204 slow=1229ms,61ms
+  ```
+
+  这样一次测量就是**一个文件**（`dsh-gtk > run.log 2>&1`），可以 grep、可以看
+  时间序列，不用每次截图。`slow` 是历史最慢的三帧，`mutPeak` 是 DOM 增删峰值。
+
 ## 0.1.8 — 2026-11-06
 
 - 新增 `DSH_GTK_CSS=/path/to/x.css`：把这个文件作为 `<style>` 注入每个页面。为了

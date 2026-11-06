@@ -301,6 +301,9 @@ func (l *Launcher) openWindow() {
 		}
 		l.mu.Unlock()
 	})
+	if fps.Enabled() && fps.LogEnabled() {
+		go l.logFPS(w)
+	}
 	if titlebar.Enabled() {
 		round := func(rounded bool) {
 			_, _ = w.Page().Eval(titlebar.RoundedScript(rounded))

@@ -222,6 +222,7 @@ replace github.com/egoist/mygo => github.com/baka-world/mygo v0.7.5-0.…
 | | `DSH_GTK_WARMUP` | 开 | `0`/`off` 关闭页面加载时的滚动预热；见「性能」 |
 | | `DSH_GTK_FPS` | 关 | `1`/`on` 在页面右上角叠加帧率/帧耗时 HUD；见「性能」 |
 | | `DSH_GTK_CSS` | 无 | 指向一个 CSS 文件，注入每个页面（实验用，改布局不用重新编译） |
+| | `DSH_GTK_FPS_LOG` | 关 | 配合 `DSH_GTK_FPS`：每秒把 HUD 的数字写进应用日志（`dsh-gtk: fps fps=…`） |
 | | `DSH_GTK_TITLEBAR` | 开 | `0`/`off` 不注入窗口 chrome 的 GTK CSS，用 GTK 3 原样；见「标题栏」 |
 
 端口不是「猜」出来的：外壳自己 `bind` 首选端口（被占用就往上找第一个空的），
@@ -403,6 +404,17 @@ mut 0/s  peak 15200/s  heap 780M
 
 `Alt+Shift+F` 隐藏/显示，`window.__dshFPS.report()` 取当前数值。只在 http(s)
 页面、顶层框架里跑，`DSH_GTK_FPS` 不设就不注入，零成本。
+
+### 把 HUD 的数字写进日志
+
+`DSH_GTK_FPS=1 DSH_GTK_FPS_LOG=1 dsh-gtk > run.log 2>&1` 之后，应用每秒写一行：
+
+```
+dsh-gtk: fps fps=60 nodes=15666 mutPeak=204 slow=1229ms,61ms
+```
+
+`slow` 是历史最慢的三帧，`mutPeak` 是 DOM 增删的峰值。做一次操作、回读文件，就不用
+截图了——测量结果本身就是可 grep 的时间序列。
 
 ### 调页面布局的实验开关
 

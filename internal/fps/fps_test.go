@@ -28,6 +28,26 @@ func TestEnabled(t *testing.T) {
 	}
 }
 
+func TestLogEnabled(t *testing.T) {
+	tests := []struct {
+		env  string
+		want bool
+	}{
+		{"", false},
+		{"0", false},
+		{"off", false},
+		{"1", true},
+		{"on", true},
+		{" ON ", true},
+	}
+	for _, tt := range tests {
+		t.Setenv("DSH_GTK_FPS_LOG", tt.env)
+		if got := LogEnabled(); got != tt.want {
+			t.Errorf("LogEnabled() with DSH_GTK_FPS_LOG=%q = %v; want %v", tt.env, got, tt.want)
+		}
+	}
+}
+
 // TestScriptGuards pins the properties the preload relies on: it must be
 // idempotent (a reload and the page's own navigation run it again), it must
 // stay out of subframes and of the mygo:// pages, and it must measure with

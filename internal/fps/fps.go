@@ -25,6 +25,17 @@ func Enabled() bool {
 	return true
 }
 
+// LogEnabled reports whether the overlay's numbers also go to the app's log
+// (DSH_GTK_FPS_LOG=1), one line a second: a measurement then ends up in a file
+// instead of a screenshot.
+func LogEnabled() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("DSH_GTK_FPS_LOG"))) {
+	case "", "0", "off", "false", "no":
+		return false
+	}
+	return true
+}
+
 // Script draws the overlay in the page. It runs in every page before the
 // page's own scripts and does nothing on mygo:// documents (the splash and
 // error pages) or in subframes.
