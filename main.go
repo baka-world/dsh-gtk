@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -1004,5 +1005,37 @@ func preloadScript() string {
 	if fps.Enabled() {
 		parts = append(parts, fps.Script)
 	}
+	if css := userCSS(); css != "" {
+		parts = append(parts, css)
+	}
 	return strings.Join(parts, "\n;\n")
+}
+
+// userCSS returns a script that appends the stylesheet named by DSH_GTK_CSS to
+// every page, so an experiment on the page's layout costs a restart instead of
+// a rebuild. The file is read when the window is created: change it, then
+// reload the page (View → Reload) or restart the app.
+func userCSS() string {
+	path := strings.TrimSpace(os.Getenv("DSH_GTK_CSS"))
+	if path == "" {
+		return ""
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		log.Printf("dsh-gtk: DSH_GTK_CSS: %v", err)
+		return ""
+	}
+	log.Printf("dsh-gtk: page CSS: %d bytes from %s", len(data), path)
+	quoted, err := json.Marshal(string(data))
+	if err != nil {
+		return ""
+	}
+	return `(function () {
+  if (window.__dshUserCSS) return;
+  window.__dshUserCSS = true;
+  var style = document.createElement('style');
+  style.setAttribute('data-dsh-user-css', '');
+  style.textContent = ` + string(quoted) + `;
+  (document.head || document.documentElement).appendChild(style);
+})();`
 }

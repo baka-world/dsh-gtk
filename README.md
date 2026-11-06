@@ -221,6 +221,7 @@ replace github.com/egoist/mygo => github.com/baka-world/mygo v0.7.5-0.…
 | | `DSH_GTK_NPM` | 打包的 npm | `runtime install` 用的 npm CLI（`npm-cli.js`） |
 | | `DSH_GTK_WARMUP` | 开 | `0`/`off` 关闭页面加载时的滚动预热；见「性能」 |
 | | `DSH_GTK_FPS` | 关 | `1`/`on` 在页面右上角叠加帧率/帧耗时 HUD；见「性能」 |
+| | `DSH_GTK_CSS` | 无 | 指向一个 CSS 文件，注入每个页面（实验用，改布局不用重新编译） |
 | | `DSH_GTK_TITLEBAR` | 开 | `0`/`off` 不注入窗口 chrome 的 GTK CSS，用 GTK 3 原样；见「标题栏」 |
 
 端口不是「猜」出来的：外壳自己 `bind` 首选端口（被占用就往上找第一个空的），
@@ -402,6 +403,12 @@ mut 0/s  peak 15200/s  heap 780M
 
 `Alt+Shift+F` 隐藏/显示，`window.__dshFPS.report()` 取当前数值。只在 http(s)
 页面、顶层框架里跑，`DSH_GTK_FPS` 不设就不注入，零成本。
+
+### 调页面布局的实验开关
+
+`DSH_GTK_CSS=/path/to/x.css dsh-gtk` 会把这个文件作为 `<style>` 追加到每个页面。
+它的用途是**不重新编译就能试一个 CSS 改动**：改文件、`View → Reload`（或重启），
+立刻看到效果。改完之后如果要固化，再写进 `internal/` 里真正注入。
 
 ### 滚动预热
 
