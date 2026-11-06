@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.1.10 — 2026-11-06
+
+- 侧边栏改成**抽屉**，而且是以 dsh 客户端插件的形式实现的，没有改 dsh 源码。
+
+  起因是开合侧边栏时掉到 8～23 fps、单帧 300 ms。用探针在同一次运行里做对照，
+  定位到：成本全在 transcript 上（把它从 DOM 里摘掉立刻回到 56 fps），但布局只要
+  1.5～2.8 ms、`visibility:hidden` 也没用——所以是**样式重算**：原布局动画的是
+  `grid-template-columns`，每帧改变正文列宽度，整棵 transcript 的样式因此失效重算。
+
+  插件（`internal/drawer`，包名 `dsh-gtk-drawer`）把侧边栏移出网格：网格不再给它
+  留轨道，它浮在内容之上用 `transform` 滑出。toggle 只改变换，合成器就能完成，
+  主线程不再参与。实测同一页面：
+
+  | | 收起 | 展开 | 最差帧 |
+  |---|---|---|---|
+  | 改造前 | 20 fps | 14 fps | 345 ms |
+  | 抽屉 | **58 fps** | **58 fps** | 36–40 ms |
+
+  它靠 dsh 的插件机制生效：包的 `package.json` 声明 `dsh.client` 后，dsh 启动时把
+  它编进页面的 `__DSH_BOOT__` 清单，从 `/plugins/dsh-gtk-drawer/client.js` 提供给
+  浏览器。外壳在启动时幂等地把它装进 `~/.dsh/profiles/web/`（复制包、加依赖、往
+  `cordis.patch.yml` 追加一行），`DSH_GTK_DRAWER=0` 可以退回原样。
+
+  侧边栏收起后开合按钮会跟着移出屏幕，插件因此在左下角放了一个悬浮的「打开」按钮。
+
 ## 0.1.9 — 2026-11-06
 
 - 新增 `DSH_GTK_FPS_LOG=1`（配合 `DSH_GTK_FPS`）：外壳每秒用 `Page.Eval` 读一次

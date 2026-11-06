@@ -25,6 +25,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/baka-world/dsh-gtk/internal/drawer"
 	"github.com/baka-world/dsh-gtk/internal/dsh"
 	"github.com/baka-world/dsh-gtk/internal/fps"
 	dshruntime "github.com/baka-world/dsh-gtk/internal/runtime"
@@ -445,6 +446,16 @@ func (l *Launcher) boot(port int, listen *os.File) (*dsh.Server, error) {
 	}
 	log.Printf("dsh-gtk: %s runtime: %s", launch.Source, launch.Executable)
 	l.noteRunning(resources, launch, installed)
+	if drawer.Enabled() {
+		home := l.cfg.home
+		if home == "" {
+			home, _ = os.UserHomeDir()
+			home = filepath.Join(home, ".dsh")
+		}
+		if err := drawer.Install(home); err != nil {
+			log.Printf("dsh-gtk: drawer plugin: %v", err)
+		}
+	}
 	var w io.Writer = os.Stderr
 	if l.logFile != nil {
 		w = l.logFile
